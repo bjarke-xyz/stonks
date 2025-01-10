@@ -1,0 +1,20 @@
+cache/*
+!cache/.gitkeep
+pgdata
+.env
+!.env.example
+data
+data/*
+!rss/data
+
+# *templ.go
+*templ.txt
+
+internal/web/static/css/tailwind.css
+internal/web/static/js/vendor/*
+!internal/web/static/js/vendor/.gitkeep
+
+node_modules
+
+# binary file
+rasende2
