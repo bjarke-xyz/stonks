@@ -10,5 +10,9 @@ type AppContext struct {
 }
 
 type AppDeps struct {
-	ScraperService ScraperService
+	ScraperService      ScraperService
+	Cache               Cache
+	QuoteService        QuoteService
+	ExchangeRateService ExchangeRateService
+	CurrencyService     CurrencyService
 }

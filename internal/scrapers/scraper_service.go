@@ -102,6 +102,7 @@ func (s *ScraperService) scrapeAndStoreSymbol(ctx context.Context, queries *dao.
 		// not important if this fails, just log it, dont return the err
 		log.Printf("failed to update last scraped timestamp for symbol %v, source %v: %v", symbol.ID, scraper.SourceIdentifier(), err)
 	}
+	s.appContext.Deps.Cache.DeleteByPrefix("QUOTE:" + symbol.Symbol)
 
 	return nil
 }

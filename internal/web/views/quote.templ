@@ -1,0 +1,81 @@
+package views
+
+import (
+	"github.com/bjarke-xyz/stonks/internal/core"
+	"time"
+)
+
+type QuoteViewModel struct {
+	Base  BaseViewModel
+	Quote core.Quote
+}
+
+templ quoteTable(model QuoteViewModel) {
+	<div class="container mx-auto">
+		<div class="overflow-x-auto">
+			<table class="table w-full border 0">
+				<!-- Table Head -->
+				<thead>
+					<tr class="bg-primary text-white">
+						<th class="px-4 py-2">Symbol</th>
+						<th class="px-4 py-2">Name</th>
+						<th class="px-4 py-2">Price</th>
+						<th class="px-4 py-2">Currency</th>
+						<th class="px-4 py-2">Timestamp</th>
+					</tr>
+				</thead>
+				<!-- Table Body -->
+				<tbody>
+					<!-- Row 1 -->
+					<tr class="">
+						<td class="px-4 py-2">{ model.Quote.Symbol.Symbol }</td>
+						<td class="px-4 py-2">{ model.Quote.Symbol.Name }</td>
+						<td class="px-4 py-2 text-right">{ model.Quote.Price.Price.String() }</td>
+						<td class="px-4 py-2">{ model.Quote.Price.Currency }</td>
+						<td class="px-4 py-2" title={ model.Quote.Price.Timestamp.Format(time.RFC3339) }>{ model.Quote.Price.Timestamp.Format(time.Stamp) }</td>
+					</tr>
+					<!-- Additional Rows as needed -->
+				</tbody>
+			</table>
+		</div>
+	</div>
+}
+
+templ QuoteTable(model QuoteViewModel) {
+	@Layout(model.Base, quoteTable(model))
+}
+
+templ quote(model QuoteViewModel) {
+	<div class="container mx-auto">
+		<div class="card w-full bg-base-100 shadow-xl">
+			<div class="card-body">
+				<h2 class="card-title text-xl font-bold">
+					<!-- Symbol and Name -->
+					<span id="symbol" class="text-primary">{ model.Quote.Symbol.Symbol }</span>
+					<span id="name" class="text-secondary">{ model.Quote.Symbol.Name }</span>
+				</h2>
+				<div class="flex justify-between items-center mt-2">
+					<!-- Price and Currency -->
+					<div>
+						<span id="price" class="text-lg font-medium">{ model.Quote.Price.Price.String() }</span>
+						<span id="currency" class="text-sm text-gray-500">{ model.Quote.Price.Currency }</span>
+					</div>
+					<!-- Timestamp -->
+					<div>
+						<span id="timestamp" class="text-sm text-gray-400" title={ model.Quote.Price.Timestamp.Format(time.RFC3339) }>
+							{ model.Quote.Price.Timestamp.Format(time.Stamp) }
+						</span>
+					</div>
+				</div>
+				// <div class="card-actions justify-end mt-4">
+				//   <button class="btn btn-primary btn-sm">View Details</button>
+				//   <button class="btn btn-secondary btn-sm">Refresh</button>
+				// </div>
+			</div>
+		</div>
+	</div>
+}
+
+templ Quote(model QuoteViewModel) {
+	@Layout(model.Base, quote(model))
+}

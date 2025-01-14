@@ -1,11 +1,16 @@
 package views
 
-templ err() {
+type ErrViewModel struct {
+	Base  BaseViewModel
+	Error error
+}
+
+templ err(model ErrViewModel) {
 	<div>
-		error
+		error: { model.Error.Error() }
 	</div>
 }
 
-templ Error(model BaseViewModel) {
-	@Layout(model, err())
+templ Error(model ErrViewModel) {
+	@Layout(model.Base, err(model))
 }

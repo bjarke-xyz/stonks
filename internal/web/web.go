@@ -28,6 +28,7 @@ func (w *web) Route(r *gin.Engine) {
 	staticFiles(r, static)
 	r.HEAD("/", w.HandleGetIndex)
 	r.GET("/", w.HandleGetIndex)
+	r.GET("/quote/:symbol", w.HandleGetQuote)
 }
 
 func (w *web) getBaseModel(c *gin.Context, title string) views.BaseViewModel {
@@ -37,13 +38,13 @@ func (w *web) getBaseModel(c *gin.Context, title string) views.BaseViewModel {
 	} else {
 		unixBuildTime = time.Now().Unix()
 	}
-	hxRequest := c.Request.Header.Get("HX-Request")
-	includeLayout := hxRequest == "" || hxRequest == "false"
-	log.Println("hxRequest", hxRequest, "includeLayout", includeLayout)
+	// hxRequest := c.Request.Header.Get("HX-Request")
+	// includeLayout := hxRequest == "" || hxRequest == "false"
+	// log.Println("hxRequest", hxRequest, "includeLayout", includeLayout)
 	model := views.BaseViewModel{
 		Path:          c.Request.URL.Path,
 		UnixBuildTime: unixBuildTime,
-		Title:         title,
+		Title:         title + " | stonks",
 		FlashInfo:     GetFlashes(c, core.FlashTypeInfo),
 		FlashWarn:     GetFlashes(c, core.FlashTypeWarn),
 		FlashError:    GetFlashes(c, core.FlashTypeError),
@@ -53,7 +54,11 @@ func (w *web) getBaseModel(c *gin.Context, title string) views.BaseViewModel {
 
 func (w *web) handleError(c *gin.Context, err error) {
 	log.Printf("error: %v", err)
-	c.HTML(http.StatusInternalServerError, "", views.Error(w.getBaseModel(c, "error")))
+	errViewModel := views.ErrViewModel{
+		Base:  w.getBaseModel(c, "error"),
+		Error: err,
+	}
+	c.HTML(http.StatusInternalServerError, "", views.Error(errViewModel))
 }
 
 func staticFiles(r *gin.Engine, staticFs fs.FS) {

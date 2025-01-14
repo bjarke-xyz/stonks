@@ -34,7 +34,7 @@ templ Layout(viewModel BaseViewModel, children ...templ.Component) {
 			<link href={ fmt.Sprintf("/static/css/tailwind.css?v=%v", viewModel.UnixBuildTime) } rel="stylesheet"/>
 			<script src={ fmt.Sprintf("/static/js/main.js?v=%v", viewModel.UnixBuildTime) } defer></script>
 		</head>
-		<body class="bg-white text-slate-900 dark:bg-slate-800 dark:text-white">
+		<body>
 			<div class="h-screen flex flex-col">
 				@header(viewModel.Path)
 				<div class="mb-auto mt-10">

@@ -11,6 +11,12 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+type Cache struct {
+	K         string      `json:"k"`
+	V         string      `json:"v"`
+	ExpiresAt interface{} `json:"expires_at"`
+}
+
 type Price struct {
 	ID        int64           `json:"id"`
 	SymbolID  int64           `json:"symbol_id"`
