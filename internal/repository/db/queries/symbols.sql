@@ -86,11 +86,11 @@ WHERE ss.symbol_id = ? AND ss.source_id = ?;
 
 
 -- name: GetSourcesNotScrapedRecently :many
--- Get scraping sources that have not been scraped in the last 60 minutes
+-- Get scraping sources that have not been scraped in the last 10 minutes
 SELECT *
 FROM symbol_sources ss
 WHERE ss.active = TRUE 
   AND (
     ss.last_scraped IS NULL OR
-    DATETIME(ss.last_scraped, '+60 minutes') <= DATETIME('now')
+    DATETIME(ss.last_scraped, '+10 minutes') <= DATETIME('now')
   );

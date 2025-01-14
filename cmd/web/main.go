@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Depado/ginprom"
 	"github.com/bjarke-xyz/stonks/internal/api"
 	"github.com/bjarke-xyz/stonks/internal/app"
 	"github.com/bjarke-xyz/stonks/internal/config"
@@ -21,6 +22,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -50,6 +52,8 @@ func main() {
 	}
 
 	appContext := app.AppContext(cfg)
+
+	runMetricsServer()
 
 	srv := Server(appContext)
 	go func() {
@@ -115,5 +119,17 @@ func ginRouter(cfg *config.Config) *gin.Engine {
 			"status": "ok",
 		})
 	})
+
+	p := ginprom.New()
+	r.Use(p.Instrument())
+
 	return r
+}
+
+func runMetricsServer() {
+	go func() {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(":9091", mux)
+	}()
 }
