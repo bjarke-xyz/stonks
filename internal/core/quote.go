@@ -18,9 +18,12 @@ type Symbol struct {
 }
 
 type Price struct {
-	Price     decimal.Decimal
-	Currency  string
-	Timestamp time.Time
+	Price                 decimal.Decimal
+	Currency              string
+	Timestamp             time.Time
+	OpeningPrice          decimal.Decimal
+	PriceChangeAbsolute   decimal.Decimal
+	PriceChangePercentage decimal.Decimal
 }
 
 type QuoteService interface {

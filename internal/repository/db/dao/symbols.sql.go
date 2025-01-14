@@ -86,6 +86,65 @@ func (q *Queries) GetLatestPriceForSymbol(ctx context.Context, symbolID int64) (
 	return i, err
 }
 
+const getQuote = `-- name: GetQuote :one
+WITH latest_price AS (
+    SELECT id, price, currency, timestamp
+    FROM prices p
+    WHERE p.symbol_id = ?1
+    ORDER BY timestamp DESC
+    LIMIT 1
+),
+opening_price AS (
+    SELECT price AS opening_price
+    FROM prices p
+    WHERE p.symbol_id = ?1
+      AND DATE(timestamp) = DATE('now')
+    ORDER BY timestamp ASC
+    LIMIT 1
+)
+SELECT 
+    lp.id AS id,
+    lp.price AS latest_price,
+    lp.currency AS currency,
+    lp.timestamp AS timestamp,
+    COALESCE(op.opening_price, 0.0) AS opening_price,
+    CAST(lp.price - COALESCE(op.opening_price, 0.0) AS NUMERIC) AS price_change_absolute,
+    CASE 
+        WHEN COALESCE(op.opening_price, 0.0) > 0 THEN 
+            CAST(((lp.price - COALESCE(op.opening_price, 0.0)) * 100.0) / COALESCE(op.opening_price, 0.0) AS NUMERIC)
+        ELSE 
+            CAST(NULL AS NUMERIC)
+    END AS price_change_percentage
+FROM latest_price lp
+LEFT JOIN opening_price op ON 1=1
+`
+
+type GetQuoteRow struct {
+	ID                    int64           `json:"id"`
+	LatestPrice           decimal.Decimal `json:"latest_price"`
+	Currency              string          `json:"currency"`
+	Timestamp             time.Time       `json:"timestamp"`
+	OpeningPrice          decimal.Decimal `json:"opening_price"`
+	PriceChangeAbsolute   float64         `json:"price_change_absolute"`
+	PriceChangePercentage float64         `json:"price_change_percentage"`
+}
+
+// Get the latest price and today's price change (absolute and percentage) for a given symbol ID
+func (q *Queries) GetQuote(ctx context.Context, symbolID int64) (GetQuoteRow, error) {
+	row := q.db.QueryRowContext(ctx, getQuote, symbolID)
+	var i GetQuoteRow
+	err := row.Scan(
+		&i.ID,
+		&i.LatestPrice,
+		&i.Currency,
+		&i.Timestamp,
+		&i.OpeningPrice,
+		&i.PriceChangeAbsolute,
+		&i.PriceChangePercentage,
+	)
+	return i, err
+}
+
 const getScrapingSourceByID = `-- name: GetScrapingSourceByID :one
 SELECT id, name, base_url, additional_info
 FROM scraping_sources
@@ -111,11 +170,11 @@ FROM symbol_sources ss
 WHERE ss.active = TRUE 
   AND (
     ss.last_scraped IS NULL OR
-    DATETIME(ss.last_scraped, '+60 minutes') <= DATETIME('now')
+    DATETIME(ss.last_scraped, '+10 minutes') <= DATETIME('now')
   )
 `
 
-// Get scraping sources that have not been scraped in the last 60 minutes
+// Get scraping sources that have not been scraped in the last 10 minutes
 func (q *Queries) GetSourcesNotScrapedRecently(ctx context.Context) ([]SymbolSource, error) {
 	rows, err := q.db.QueryContext(ctx, getSourcesNotScrapedRecently)
 	if err != nil {

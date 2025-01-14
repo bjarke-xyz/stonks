@@ -94,3 +94,37 @@ WHERE ss.active = TRUE
     ss.last_scraped IS NULL OR
     DATETIME(ss.last_scraped, '+10 minutes') <= DATETIME('now')
   );
+
+
+-- name: GetQuote :one
+-- Get the latest price and today's price change (absolute and percentage) for a given symbol ID
+WITH latest_price AS (
+    SELECT id, price, currency, timestamp
+    FROM prices p
+    WHERE p.symbol_id = ?1
+    ORDER BY timestamp DESC
+    LIMIT 1
+),
+opening_price AS (
+    SELECT price AS opening_price
+    FROM prices p
+    WHERE p.symbol_id = ?1
+      AND DATE(timestamp) = DATE('now')
+    ORDER BY timestamp ASC
+    LIMIT 1
+)
+SELECT 
+    lp.id AS id,
+    lp.price AS latest_price,
+    lp.currency AS currency,
+    lp.timestamp AS timestamp,
+    COALESCE(op.opening_price, 0.0) AS opening_price,
+    CAST(lp.price - COALESCE(op.opening_price, 0.0) AS NUMERIC) AS price_change_absolute,
+    CASE 
+        WHEN COALESCE(op.opening_price, 0.0) > 0 THEN 
+            CAST(((lp.price - COALESCE(op.opening_price, 0.0)) * 100.0) / COALESCE(op.opening_price, 0.0) AS NUMERIC)
+        ELSE 
+            CAST(NULL AS NUMERIC)
+    END AS price_change_percentage
+FROM latest_price lp
+LEFT JOIN opening_price op ON 1=1;

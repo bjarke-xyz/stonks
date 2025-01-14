@@ -8,6 +8,7 @@ import (
 
 	"github.com/bjarke-xyz/stonks/internal/core"
 	"github.com/bjarke-xyz/stonks/internal/repository/db"
+	"github.com/shopspring/decimal"
 )
 
 type QuoteService struct {
@@ -20,7 +21,7 @@ func NewQuoteService(appContext *core.AppContext) core.QuoteService {
 
 func (q *QuoteService) GetQuote(ctx context.Context, tickerSymbol string) (core.Quote, error) {
 	tickerSymbol = strings.ToUpper(tickerSymbol)
-	cacheKey := "QUOTE:" + tickerSymbol
+	cacheKey := "QUOTE:v2:" + tickerSymbol
 	quote := core.Quote{}
 	inCache, _ := q.appContext.Deps.Cache.GetObj(cacheKey, &quote)
 	if inCache {
@@ -37,7 +38,7 @@ func (q *QuoteService) GetQuote(ctx context.Context, tickerSymbol string) (core.
 		return core.Quote{}, fmt.Errorf("error getting symbol: %w", err)
 	}
 
-	price, err := queries.GetLatestPriceForSymbol(ctx, symbol.ID)
+	priceQuote, err := queries.GetQuote(ctx, symbol.ID)
 	if err != nil {
 		return core.Quote{}, fmt.Errorf("error getting price for symbol %+v: %w", symbol, err)
 	}
@@ -48,9 +49,12 @@ func (q *QuoteService) GetQuote(ctx context.Context, tickerSymbol string) (core.
 			Name:   symbol.Name.String,
 		},
 		Price: core.Price{
-			Price:     price.Price,
-			Currency:  price.Currency,
-			Timestamp: price.Timestamp,
+			Price:                 priceQuote.LatestPrice,
+			Currency:              priceQuote.Currency,
+			Timestamp:             priceQuote.Timestamp,
+			OpeningPrice:          priceQuote.OpeningPrice,
+			PriceChangeAbsolute:   decimal.NewFromFloat(priceQuote.PriceChangeAbsolute),
+			PriceChangePercentage: decimal.NewFromFloat(priceQuote.PriceChangePercentage),
 		},
 	}
 	q.appContext.Deps.Cache.InsertObj(cacheKey, quote, 30)

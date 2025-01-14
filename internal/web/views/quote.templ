@@ -19,7 +19,10 @@ templ quoteTable(model QuoteViewModel) {
 					<tr class="bg-primary text-white">
 						<th class="px-4 py-2">Symbol</th>
 						<th class="px-4 py-2">Name</th>
-						<th class="px-4 py-2">Price</th>
+						<th class="px-4 py-2">Latest price</th>
+						<th class="px-4 py-2">Opening price</th>
+						<th class="px-4 py-2">Change (Absolute)</th>
+						<th class="px-4 py-2">Change (Percentage)</th>
 						<th class="px-4 py-2">Currency</th>
 						<th class="px-4 py-2">Timestamp</th>
 					</tr>
@@ -31,6 +34,9 @@ templ quoteTable(model QuoteViewModel) {
 						<td class="px-4 py-2">{ model.Quote.Symbol.Symbol }</td>
 						<td class="px-4 py-2">{ model.Quote.Symbol.Name }</td>
 						<td class="px-4 py-2 text-right">{ model.Quote.Price.Price.String() }</td>
+						<td class="px-4 py-2 text-right">{ model.Quote.Price.OpeningPrice.String() }</td>
+						<td class="px-4 py-2 text-right">{ model.Quote.Price.PriceChangeAbsolute.StringFixed(2) }</td>
+						<td class="px-4 py-2 text-right">{ model.Quote.Price.PriceChangePercentage.StringFixed(2) }%</td>
 						<td class="px-4 py-2">{ model.Quote.Price.Currency }</td>
 						<td class="px-4 py-2" title={ model.Quote.Price.Timestamp.Format(time.RFC3339) }>{ model.Quote.Price.Timestamp.Format(time.Stamp) }</td>
 					</tr>
