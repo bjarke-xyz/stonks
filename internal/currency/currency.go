@@ -38,7 +38,14 @@ func (c *CurrencyService) ConvertQuoteCurrency(ctx context.Context, quote core.Q
 	if err != nil {
 		return core.Quote{}, err
 	}
+
+	newOpeningPrice, err := c.ConvertCurrency(ctx, quote.Price.OpeningPrice, quote.Price.Currency, toCurrency)
+	if err != nil {
+		return core.Quote{}, err
+	}
+
 	quote.Price.Price = newPrice
+	quote.Price.OpeningPrice = newOpeningPrice
 	quote.Price.Currency = toCurrency
 	return quote, nil
 }

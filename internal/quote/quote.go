@@ -8,7 +8,6 @@ import (
 
 	"github.com/bjarke-xyz/stonks/internal/core"
 	"github.com/bjarke-xyz/stonks/internal/repository/db"
-	"github.com/shopspring/decimal"
 )
 
 type QuoteService struct {
@@ -49,12 +48,10 @@ func (q *QuoteService) GetQuote(ctx context.Context, tickerSymbol string) (core.
 			Name:   symbol.Name.String,
 		},
 		Price: core.Price{
-			Price:                 priceQuote.LatestPrice,
-			Currency:              priceQuote.Currency,
-			Timestamp:             priceQuote.Timestamp,
-			OpeningPrice:          priceQuote.OpeningPrice,
-			PriceChangeAbsolute:   decimal.NewFromFloat(priceQuote.PriceChangeAbsolute),
-			PriceChangePercentage: decimal.NewFromFloat(priceQuote.PriceChangePercentage),
+			Price:        priceQuote.LatestPrice,
+			Currency:     priceQuote.Currency,
+			Timestamp:    priceQuote.Timestamp,
+			OpeningPrice: priceQuote.OpeningPrice,
 		},
 	}
 	q.appContext.Deps.Cache.InsertObj(cacheKey, quote, 30)
