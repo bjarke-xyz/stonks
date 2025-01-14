@@ -36,7 +36,7 @@ func (b *BorseFrankfurtScraper) Scrape(ctx context.Context, symbol dao.Symbol) (
 
 	symbolSource, err := queries.GetSymbolSource(ctx, dao.GetSymbolSourceParams{
 		SymbolID: symbol.ID,
-		SourceID: ScrapingSourceIdentifierBORSFRA,
+		SourceID: b.SourceIdentifier(),
 	})
 	if err != nil {
 		return ScrapeResult{}, fmt.Errorf("error getting symbol source: %w", err)
