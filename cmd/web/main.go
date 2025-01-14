@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/bjarke-xyz/stonks/internal/api"
 	"github.com/bjarke-xyz/stonks/internal/app"
 	"github.com/bjarke-xyz/stonks/internal/config"
 	"github.com/bjarke-xyz/stonks/internal/core"
@@ -86,6 +87,9 @@ func Server(appContext *core.AppContext) *http.Server {
 
 func routes(appContext *core.AppContext) http.Handler {
 	r := ginRouter(appContext.Config)
+
+	apiHandlers := api.NewAPI(appContext)
+	apiHandlers.Route(r)
 
 	webHandlers := web.NewWeb(appContext)
 	webHandlers.Route(r)

@@ -51,6 +51,11 @@ func (w *web) getBaseModel(c *gin.Context, title string) views.BaseViewModel {
 	return model
 }
 
+func (w *web) handleError(c *gin.Context, err error) {
+	log.Printf("error: %v", err)
+	c.HTML(http.StatusInternalServerError, "", views.Error(w.getBaseModel(c, "error")))
+}
+
 func staticFiles(r *gin.Engine, staticFs fs.FS) {
 	staticWeb, err := fs.Sub(staticFs, "static")
 	if err != nil {

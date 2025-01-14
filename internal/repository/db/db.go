@@ -23,7 +23,7 @@ func Open(connStringer ConnectionStringer) (*sqlx.DB, error) {
 	if ok {
 		return existingDb, nil
 	} else {
-		db, err := sqlx.Open("libsql", connStringer.ConnectionString())
+		db, err := sqlx.Open("sqlite3", connStringer.ConnectionString())
 		if err != nil {
 			return nil, fmt.Errorf("failed to connect to db: %w", err)
 		}

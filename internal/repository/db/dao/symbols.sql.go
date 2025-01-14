@@ -7,22 +7,50 @@ package dao
 
 import (
 	"context"
+	"database/sql"
+	"time"
+
+	"github.com/shopspring/decimal"
 )
 
-const getAllSymbols = `-- name: GetAllSymbols :many
-SELECT id, symbol, name FROM symbols
+const deactivateSymbolSource = `-- name: DeactivateSymbolSource :exec
+UPDATE symbol_sources
+SET active = FALSE
+WHERE symbol_id = ? AND source_id = ?
 `
 
-func (q *Queries) GetAllSymbols(ctx context.Context) ([]Symbol, error) {
-	rows, err := q.db.QueryContext(ctx, getAllSymbols)
+type DeactivateSymbolSourceParams struct {
+	SymbolID int64  `json:"symbol_id"`
+	SourceID string `json:"source_id"`
+}
+
+// Deactivate a scraping source for a specific symbol
+func (q *Queries) DeactivateSymbolSource(ctx context.Context, arg DeactivateSymbolSourceParams) error {
+	_, err := q.db.ExecContext(ctx, deactivateSymbolSource, arg.SymbolID, arg.SourceID)
+	return err
+}
+
+const getAllScrapingSources = `-- name: GetAllScrapingSources :many
+SELECT id, name, base_url, additional_info
+FROM scraping_sources
+`
+
+// Get all scraping sources
+func (q *Queries) GetAllScrapingSources(ctx context.Context) ([]ScrapingSource, error) {
+	rows, err := q.db.QueryContext(ctx, getAllScrapingSources)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Symbol
+	var items []ScrapingSource
 	for rows.Next() {
-		var i Symbol
-		if err := rows.Scan(&i.ID, &i.Symbol, &i.Name); err != nil {
+		var i ScrapingSource
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.BaseUrl,
+			&i.AdditionalInfo,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -36,21 +64,212 @@ func (q *Queries) GetAllSymbols(ctx context.Context) ([]Symbol, error) {
 	return items, nil
 }
 
-const testPrices = `-- name: TestPrices :many
-SELECT id, symbol_id, price, currency, timestamp FROM prices
+const getLatestPriceForSymbol = `-- name: GetLatestPriceForSymbol :one
+SELECT id, symbol_id, price, currency, timestamp
+FROM prices p
+WHERE p.symbol_id = ?
+ORDER BY p.timestamp DESC
+LIMIT 1
 `
 
-func (q *Queries) TestPrices(ctx context.Context) ([]Price, error) {
-	rows, err := q.db.QueryContext(ctx, testPrices)
+// Get the latest price for a given symbol
+func (q *Queries) GetLatestPriceForSymbol(ctx context.Context, symbolID int64) (Price, error) {
+	row := q.db.QueryRowContext(ctx, getLatestPriceForSymbol, symbolID)
+	var i Price
+	err := row.Scan(
+		&i.ID,
+		&i.SymbolID,
+		&i.Price,
+		&i.Currency,
+		&i.Timestamp,
+	)
+	return i, err
+}
+
+const getScrapingSourceByID = `-- name: GetScrapingSourceByID :one
+SELECT id, name, base_url, additional_info
+FROM scraping_sources
+WHERE id = ?
+`
+
+// Get a scraping source by its ID
+func (q *Queries) GetScrapingSourceByID(ctx context.Context, id string) (ScrapingSource, error) {
+	row := q.db.QueryRowContext(ctx, getScrapingSourceByID, id)
+	var i ScrapingSource
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.BaseUrl,
+		&i.AdditionalInfo,
+	)
+	return i, err
+}
+
+const getSourcesNotScrapedRecently = `-- name: GetSourcesNotScrapedRecently :many
+SELECT id, symbol_id, source_id, scrape_url, active, last_scraped
+FROM symbol_sources ss
+WHERE ss.active = TRUE 
+  AND (
+    ss.last_scraped IS NULL OR
+    DATETIME(ss.last_scraped, '+60 minutes') <= DATETIME('now')
+  )
+`
+
+// Get scraping sources that have not been scraped in the last 60 minutes
+func (q *Queries) GetSourcesNotScrapedRecently(ctx context.Context) ([]SymbolSource, error) {
+	rows, err := q.db.QueryContext(ctx, getSourcesNotScrapedRecently)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Price
+	var items []SymbolSource
 	for rows.Next() {
-		var i Price
+		var i SymbolSource
 		if err := rows.Scan(
 			&i.ID,
+			&i.SymbolID,
+			&i.SourceID,
+			&i.ScrapeUrl,
+			&i.Active,
+			&i.LastScraped,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSymbolByID = `-- name: GetSymbolByID :one
+SELECT id, symbol, name
+FROM symbols
+WHERE id = ?
+`
+
+// Get a symbol by its ID
+func (q *Queries) GetSymbolByID(ctx context.Context, id int64) (Symbol, error) {
+	row := q.db.QueryRowContext(ctx, getSymbolByID, id)
+	var i Symbol
+	err := row.Scan(&i.ID, &i.Symbol, &i.Name)
+	return i, err
+}
+
+const getSymbolByTicker = `-- name: GetSymbolByTicker :one
+SELECT id, symbol, name
+FROM symbols
+WHERE symbol = ?
+`
+
+// Get a symbol by its ticker
+func (q *Queries) GetSymbolByTicker(ctx context.Context, symbol string) (Symbol, error) {
+	row := q.db.QueryRowContext(ctx, getSymbolByTicker, symbol)
+	var i Symbol
+	err := row.Scan(&i.ID, &i.Symbol, &i.Name)
+	return i, err
+}
+
+const getSymbolSource = `-- name: GetSymbolSource :one
+SELECT id, symbol_id, source_id, scrape_url, active, last_scraped 
+FROM symbol_sources ss
+WHERE ss.symbol_id = ? AND ss.source_id = ?
+`
+
+type GetSymbolSourceParams struct {
+	SymbolID int64  `json:"symbol_id"`
+	SourceID string `json:"source_id"`
+}
+
+// Get symbol source by symbol ID and scraping source id
+func (q *Queries) GetSymbolSource(ctx context.Context, arg GetSymbolSourceParams) (SymbolSource, error) {
+	row := q.db.QueryRowContext(ctx, getSymbolSource, arg.SymbolID, arg.SourceID)
+	var i SymbolSource
+	err := row.Scan(
+		&i.ID,
+		&i.SymbolID,
+		&i.SourceID,
+		&i.ScrapeUrl,
+		&i.Active,
+		&i.LastScraped,
+	)
+	return i, err
+}
+
+const getSymbolSources = `-- name: GetSymbolSources :many
+SELECT id, symbol_id, source_id, scrape_url, active, last_scraped
+FROM symbol_sources ss
+WHERE ss.symbol_id = ?
+`
+
+// Get all sources mapped to a symbol
+func (q *Queries) GetSymbolSources(ctx context.Context, symbolID int64) ([]SymbolSource, error) {
+	rows, err := q.db.QueryContext(ctx, getSymbolSources, symbolID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SymbolSource
+	for rows.Next() {
+		var i SymbolSource
+		if err := rows.Scan(
+			&i.ID,
+			&i.SymbolID,
+			&i.SourceID,
+			&i.ScrapeUrl,
+			&i.Active,
+			&i.LastScraped,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSymbolsWithNoPrices = `-- name: GetSymbolsWithNoPrices :many
+SELECT s.id, symbol, name, p.id, symbol_id, price, currency, timestamp
+FROM symbols s
+LEFT JOIN prices p ON s.id = p.symbol_id
+WHERE p.id IS NULL
+`
+
+type GetSymbolsWithNoPricesRow struct {
+	ID        int64           `json:"id"`
+	Symbol    string          `json:"symbol"`
+	Name      sql.NullString  `json:"name"`
+	ID_2      sql.NullInt64   `json:"id_2"`
+	SymbolID  sql.NullInt64   `json:"symbol_id"`
+	Price     sql.NullFloat64 `json:"price"`
+	Currency  sql.NullString  `json:"currency"`
+	Timestamp sql.NullTime    `json:"timestamp"`
+}
+
+// Get all symbols that have no prices recorded
+func (q *Queries) GetSymbolsWithNoPrices(ctx context.Context) ([]GetSymbolsWithNoPricesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getSymbolsWithNoPrices)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSymbolsWithNoPricesRow
+	for rows.Next() {
+		var i GetSymbolsWithNoPricesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Symbol,
+			&i.Name,
+			&i.ID_2,
 			&i.SymbolID,
 			&i.Price,
 			&i.Currency,
@@ -67,4 +286,113 @@ func (q *Queries) TestPrices(ctx context.Context) ([]Price, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const insertPrice = `-- name: InsertPrice :exec
+INSERT INTO prices (symbol_id, price, currency, timestamp)
+VALUES (?, ?, ?, ?)
+ON CONFLICT (symbol_id, timestamp, currency) DO UPDATE
+SET price = EXCLUDED.price, 
+    timestamp = EXCLUDED.timestamp
+`
+
+type InsertPriceParams struct {
+	SymbolID  int64           `json:"symbol_id"`
+	Price     decimal.Decimal `json:"price"`
+	Currency  string          `json:"currency"`
+	Timestamp time.Time       `json:"timestamp"`
+}
+
+// Insert or update a price entry on conflict
+func (q *Queries) InsertPrice(ctx context.Context, arg InsertPriceParams) error {
+	_, err := q.db.ExecContext(ctx, insertPrice,
+		arg.SymbolID,
+		arg.Price,
+		arg.Currency,
+		arg.Timestamp,
+	)
+	return err
+}
+
+const insertScrapingSource = `-- name: InsertScrapingSource :exec
+INSERT INTO scraping_sources (id, name, base_url, additional_info)
+VALUES (?, ?, ?, ?)
+`
+
+type InsertScrapingSourceParams struct {
+	ID             string         `json:"id"`
+	Name           string         `json:"name"`
+	BaseUrl        string         `json:"base_url"`
+	AdditionalInfo sql.NullString `json:"additional_info"`
+}
+
+// Insert a new scraping source
+func (q *Queries) InsertScrapingSource(ctx context.Context, arg InsertScrapingSourceParams) error {
+	_, err := q.db.ExecContext(ctx, insertScrapingSource,
+		arg.ID,
+		arg.Name,
+		arg.BaseUrl,
+		arg.AdditionalInfo,
+	)
+	return err
+}
+
+const insertSymbol = `-- name: InsertSymbol :one
+INSERT INTO symbols (symbol, name)
+VALUES (?, ?)
+RETURNING id, symbol, name
+`
+
+type InsertSymbolParams struct {
+	Symbol string         `json:"symbol"`
+	Name   sql.NullString `json:"name"`
+}
+
+// Insert a new symbol
+func (q *Queries) InsertSymbol(ctx context.Context, arg InsertSymbolParams) (Symbol, error) {
+	row := q.db.QueryRowContext(ctx, insertSymbol, arg.Symbol, arg.Name)
+	var i Symbol
+	err := row.Scan(&i.ID, &i.Symbol, &i.Name)
+	return i, err
+}
+
+const insertSymbolSource = `-- name: InsertSymbolSource :exec
+INSERT INTO symbol_sources (symbol_id, source_id, scrape_url, active)
+VALUES (?, ?, ?, ?)
+`
+
+type InsertSymbolSourceParams struct {
+	SymbolID  int64        `json:"symbol_id"`
+	SourceID  string       `json:"source_id"`
+	ScrapeUrl string       `json:"scrape_url"`
+	Active    sql.NullBool `json:"active"`
+}
+
+// Add a new symbol-source mapping
+func (q *Queries) InsertSymbolSource(ctx context.Context, arg InsertSymbolSourceParams) error {
+	_, err := q.db.ExecContext(ctx, insertSymbolSource,
+		arg.SymbolID,
+		arg.SourceID,
+		arg.ScrapeUrl,
+		arg.Active,
+	)
+	return err
+}
+
+const updateLastScraped = `-- name: UpdateLastScraped :exec
+UPDATE symbol_sources
+SET last_scraped = ?
+WHERE symbol_id = ? AND source_id = ?
+`
+
+type UpdateLastScrapedParams struct {
+	LastScraped sql.NullTime `json:"last_scraped"`
+	SymbolID    int64        `json:"symbol_id"`
+	SourceID    string       `json:"source_id"`
+}
+
+// Update the last scraped timestamp for a specific symbol and source
+func (q *Queries) UpdateLastScraped(ctx context.Context, arg UpdateLastScrapedParams) error {
+	_, err := q.db.ExecContext(ctx, updateLastScraped, arg.LastScraped, arg.SymbolID, arg.SourceID)
+	return err
 }

@@ -20,7 +20,7 @@ type Price struct {
 }
 
 type ScrapingSource struct {
-	ID             int64          `json:"id"`
+	ID             string         `json:"id"`
 	Name           string         `json:"name"`
 	BaseUrl        string         `json:"base_url"`
 	AdditionalInfo sql.NullString `json:"additional_info"`
@@ -33,10 +33,10 @@ type Symbol struct {
 }
 
 type SymbolSource struct {
-	ID          int64          `json:"id"`
-	SymbolID    int64          `json:"symbol_id"`
-	SourceID    int64          `json:"source_id"`
-	ScrapeUrl   sql.NullString `json:"scrape_url"`
-	Active      sql.NullBool   `json:"active"`
-	LastScraped sql.NullTime   `json:"last_scraped"`
+	ID          int64        `json:"id"`
+	SymbolID    int64        `json:"symbol_id"`
+	SourceID    string       `json:"source_id"`
+	ScrapeUrl   string       `json:"scrape_url"`
+	Active      sql.NullBool `json:"active"`
+	LastScraped sql.NullTime `json:"last_scraped"`
 }

@@ -9,5 +9,6 @@ import (
 
 func (w *web) HandleGetIndex(c *gin.Context) {
 	model := w.getBaseModel(c, "stonks")
+
 	c.HTML(http.StatusOK, "", views.Index(model))
 }

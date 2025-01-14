@@ -1,0 +1,11 @@
+package views
+
+templ err() {
+	<div>
+		error
+	</div>
+}
+
+templ Error(model BaseViewModel) {
+	@Layout(model, err())
+}
