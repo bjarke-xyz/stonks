@@ -36,6 +36,7 @@ type Symbol struct {
 	ID     int64          `json:"id"`
 	Symbol string         `json:"symbol"`
 	Name   sql.NullString `json:"name"`
+	Isin   string         `json:"isin"`
 }
 
 type SymbolSource struct {

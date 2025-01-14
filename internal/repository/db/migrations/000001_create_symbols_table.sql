@@ -2,7 +2,8 @@
 CREATE TABLE IF NOT EXISTS symbols(
     id INTEGER PRIMARY KEY,  -- Auto-incrementing ID
     symbol TEXT UNIQUE NOT NULL,  -- Unique ticker/identifier for stocks, ETFs, etc.
-    name TEXT  -- Full name of the stock/ETF, optional
+    name TEXT,  -- Full name of the stock/ETF, optional
+    isin text NOT NULL -- ISIN id of the stock/ETF
 );
 CREATE INDEX idx_symbols_symbol ON symbols(symbol);
 

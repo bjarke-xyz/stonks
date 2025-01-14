@@ -206,7 +206,7 @@ func (q *Queries) GetSourcesNotScrapedRecently(ctx context.Context) ([]SymbolSou
 }
 
 const getSymbolByID = `-- name: GetSymbolByID :one
-SELECT id, symbol, name
+SELECT id, symbol, name, isin
 FROM symbols
 WHERE id = ?
 `
@@ -215,12 +215,17 @@ WHERE id = ?
 func (q *Queries) GetSymbolByID(ctx context.Context, id int64) (Symbol, error) {
 	row := q.db.QueryRowContext(ctx, getSymbolByID, id)
 	var i Symbol
-	err := row.Scan(&i.ID, &i.Symbol, &i.Name)
+	err := row.Scan(
+		&i.ID,
+		&i.Symbol,
+		&i.Name,
+		&i.Isin,
+	)
 	return i, err
 }
 
 const getSymbolByTicker = `-- name: GetSymbolByTicker :one
-SELECT id, symbol, name
+SELECT id, symbol, name, isin
 FROM symbols
 WHERE symbol = ?
 `
@@ -229,7 +234,12 @@ WHERE symbol = ?
 func (q *Queries) GetSymbolByTicker(ctx context.Context, symbol string) (Symbol, error) {
 	row := q.db.QueryRowContext(ctx, getSymbolByTicker, symbol)
 	var i Symbol
-	err := row.Scan(&i.ID, &i.Symbol, &i.Name)
+	err := row.Scan(
+		&i.ID,
+		&i.Symbol,
+		&i.Name,
+		&i.Isin,
+	)
 	return i, err
 }
 
@@ -297,7 +307,7 @@ func (q *Queries) GetSymbolSources(ctx context.Context, symbolID int64) ([]Symbo
 }
 
 const getSymbolsWithNoPrices = `-- name: GetSymbolsWithNoPrices :many
-SELECT s.id, symbol, name, p.id, symbol_id, price, currency, timestamp
+SELECT s.id, symbol, name, isin, p.id, symbol_id, price, currency, timestamp
 FROM symbols s
 LEFT JOIN prices p ON s.id = p.symbol_id
 WHERE p.id IS NULL
@@ -307,6 +317,7 @@ type GetSymbolsWithNoPricesRow struct {
 	ID        int64           `json:"id"`
 	Symbol    string          `json:"symbol"`
 	Name      sql.NullString  `json:"name"`
+	Isin      string          `json:"isin"`
 	ID_2      sql.NullInt64   `json:"id_2"`
 	SymbolID  sql.NullInt64   `json:"symbol_id"`
 	Price     sql.NullFloat64 `json:"price"`
@@ -328,6 +339,7 @@ func (q *Queries) GetSymbolsWithNoPrices(ctx context.Context) ([]GetSymbolsWithN
 			&i.ID,
 			&i.Symbol,
 			&i.Name,
+			&i.Isin,
 			&i.ID_2,
 			&i.SymbolID,
 			&i.Price,
@@ -407,10 +419,16 @@ type InsertSymbolParams struct {
 	Name   sql.NullString `json:"name"`
 }
 
+type InsertSymbolRow struct {
+	ID     int64          `json:"id"`
+	Symbol string         `json:"symbol"`
+	Name   sql.NullString `json:"name"`
+}
+
 // Insert a new symbol
-func (q *Queries) InsertSymbol(ctx context.Context, arg InsertSymbolParams) (Symbol, error) {
+func (q *Queries) InsertSymbol(ctx context.Context, arg InsertSymbolParams) (InsertSymbolRow, error) {
 	row := q.db.QueryRowContext(ctx, insertSymbol, arg.Symbol, arg.Name)
-	var i Symbol
+	var i InsertSymbolRow
 	err := row.Scan(&i.ID, &i.Symbol, &i.Name)
 	return i, err
 }
