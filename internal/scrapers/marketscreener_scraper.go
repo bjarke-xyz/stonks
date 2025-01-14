@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -113,7 +114,7 @@ func (m *MarketscreenerScraper) Scrape(ctx context.Context, symbol dao.Symbol) (
 		return ScrapeResult{}, fmt.Errorf("invalid price format: %w", err)
 	}
 
-	timestamp, err := time.Parse("2006-01-02MST15:04:05", product.Offers.ValidFrom)
+	timestamp, err := m.parseTimestamp(product.Offers.ValidFrom)
 	if err != nil {
 		log.Printf("failed to parse marketscreener timestamp (%v): %v", product.Offers.ValidFrom, err)
 		timestamp = time.Now() // Fallback to `now`
@@ -125,4 +126,28 @@ func (m *MarketscreenerScraper) Scrape(ctx context.Context, symbol dao.Symbol) (
 		Timestamp: timestamp,
 	}
 	return result, nil
+}
+
+func (m *MarketscreenerScraper) parseTimestamp(inputTimestamp string) (time.Time, error) {
+	location, err := time.LoadLocation("Europe/Copenhagen")
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error loading Europe/Copenhagen location: %w", err)
+	}
+
+	splitStr := "CET"
+	if strings.Contains(inputTimestamp, "CEST") {
+		splitStr = "CEST"
+	}
+	inputTimestampParts := strings.Split(inputTimestamp, splitStr)
+
+	formattedInputTimestamp := strings.Join(inputTimestampParts, "T")
+
+	layout := "2006-01-02T15:04:05"
+
+	parsedTimestamp, err := time.ParseInLocation(layout, formattedInputTimestamp, location)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error parsing timestamp. Original timestamp=%v, formatted=%v: %w", inputTimestamp, formattedInputTimestamp, err)
+	}
+
+	return parsedTimestamp, nil
 }

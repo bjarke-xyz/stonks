@@ -94,7 +94,7 @@ func (s *ScraperService) scrapeAndStoreSymbol(ctx context.Context, queries *dao.
 	log.Printf("scraped symbol %v: %v (%v) at %v", symbol.Symbol, scrapeResult.Price, scrapeResult.Currency, scrapeResult.Timestamp)
 
 	err = queries.UpdateLastScraped(ctx, dao.UpdateLastScrapedParams{
-		LastScraped: sql.NullTime{Time: time.Now(), Valid: true},
+		LastScraped: sql.NullTime{Time: time.Now().UTC(), Valid: true},
 		SymbolID:    symbol.ID,
 		SourceID:    scraper.SourceIdentifier(),
 	})
