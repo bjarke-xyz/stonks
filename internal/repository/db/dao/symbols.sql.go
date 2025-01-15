@@ -113,7 +113,7 @@ SELECT
         WHEN COALESCE(op.opening_price, 0.0) > 0 THEN 
             CAST(((lp.price - COALESCE(op.opening_price, 0.0)) * 100.0) / COALESCE(op.opening_price, 0.0) AS NUMERIC)
         ELSE 
-            CAST(NULL AS NUMERIC)
+            CAST(0.0 AS NUMERIC)
     END AS price_change_percentage
 FROM latest_price lp
 LEFT JOIN opening_price op ON 1=1
