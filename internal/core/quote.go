@@ -25,6 +25,10 @@ type Price struct {
 }
 
 func (p Price) PriceChangeAbsolute() decimal.Decimal {
+	// assuming a price will never go to 0...
+	if p.OpeningPrice.Equal(decimal.NewFromInt(0)) {
+		return decimal.NewFromInt(0)
+	}
 	return p.Price.Sub(p.OpeningPrice)
 }
 
