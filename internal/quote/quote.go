@@ -48,10 +48,11 @@ func (q *QuoteService) GetQuote(ctx context.Context, tickerSymbol string) (core.
 			Name:   symbol.Name.String,
 		},
 		Price: core.Price{
-			Price:        priceQuote.LatestPrice,
-			Currency:     priceQuote.Currency,
-			Timestamp:    priceQuote.Timestamp,
-			OpeningPrice: priceQuote.OpeningPrice,
+			Price:                priceQuote.LatestPrice,
+			Currency:             priceQuote.Currency,
+			Timestamp:            priceQuote.Timestamp,
+			OpeningPrice:         priceQuote.OpeningPrice,
+			PreviousClosingPrice: priceQuote.PreviousClosingPrice,
 		},
 	}
 	q.appContext.Deps.Cache.InsertObj(cacheKey, quote, 30)

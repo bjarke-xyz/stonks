@@ -18,25 +18,26 @@ type Symbol struct {
 }
 
 type Price struct {
-	Price        decimal.Decimal
-	Currency     string
-	Timestamp    time.Time
-	OpeningPrice decimal.Decimal
+	Price                decimal.Decimal
+	Currency             string
+	Timestamp            time.Time
+	OpeningPrice         decimal.Decimal
+	PreviousClosingPrice decimal.Decimal
 }
 
 func (p Price) PriceChangeAbsolute() decimal.Decimal {
 	// assuming a price will never go to 0...
-	if p.OpeningPrice.Equal(decimal.NewFromInt(0)) {
+	if p.PreviousClosingPrice.Equal(decimal.NewFromInt(0)) {
 		return decimal.NewFromInt(0)
 	}
-	return p.Price.Sub(p.OpeningPrice)
+	return p.Price.Sub(p.PreviousClosingPrice)
 }
 
 func (p Price) PriceChangePercentage() decimal.Decimal {
 	// Check if OpeningPrice is greater than 0
-	if p.OpeningPrice.GreaterThan(decimal.NewFromInt(0)) {
+	if p.PreviousClosingPrice.GreaterThan(decimal.NewFromInt(0)) {
 		// Calculate price change percentage: ((Price - OpeningPrice) * 100) / OpeningPrice
-		priceChange := p.Price.Sub(p.OpeningPrice).Mul(decimal.NewFromInt(100)).Div(p.OpeningPrice)
+		priceChange := p.Price.Sub(p.PreviousClosingPrice).Mul(decimal.NewFromInt(100)).Div(p.PreviousClosingPrice)
 		return priceChange
 	}
 

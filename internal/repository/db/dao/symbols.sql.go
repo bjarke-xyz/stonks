@@ -101,6 +101,14 @@ opening_price AS (
       AND DATE(timestamp) = DATE('now')
     ORDER BY timestamp ASC
     LIMIT 1
+),
+previous_closing_price AS (
+    SELECT price AS closing_price
+    FROM prices
+    WHERE symbol_id = ?1
+      AND DATE(timestamp) = DATE('now', '-1 day')
+    ORDER BY timestamp DESC
+    LIMIT 1
 )
 SELECT 
     lp.id AS id,
@@ -114,9 +122,11 @@ SELECT
             CAST(((lp.price - COALESCE(op.opening_price, 0.0)) * 100.0) / COALESCE(op.opening_price, 0.0) AS NUMERIC)
         ELSE 
             CAST(0.0 AS NUMERIC)
-    END AS price_change_percentage
+    END AS price_change_percentage,
+    COALESCE(pc.closing_price, 0.0) AS previous_closing_price
 FROM latest_price lp
 LEFT JOIN opening_price op ON 1=1
+LEFT JOIN previous_closing_price pc ON 1=1
 `
 
 type GetQuoteRow struct {
@@ -127,6 +137,7 @@ type GetQuoteRow struct {
 	OpeningPrice          decimal.Decimal `json:"opening_price"`
 	PriceChangeAbsolute   float64         `json:"price_change_absolute"`
 	PriceChangePercentage float64         `json:"price_change_percentage"`
+	PreviousClosingPrice  decimal.Decimal `json:"previous_closing_price"`
 }
 
 // Get the latest price and today's price change (absolute and percentage) for a given symbol ID
@@ -141,6 +152,7 @@ func (q *Queries) GetQuote(ctx context.Context, symbolID int64) (GetQuoteRow, er
 		&i.OpeningPrice,
 		&i.PriceChangeAbsolute,
 		&i.PriceChangePercentage,
+		&i.PreviousClosingPrice,
 	)
 	return i, err
 }
