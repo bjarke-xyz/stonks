@@ -138,3 +138,10 @@ SELECT
 FROM latest_price lp
 LEFT JOIN opening_price op ON 1=1
 LEFT JOIN previous_closing_price pc ON 1=1;
+
+-- name: GetHistoricalPrices :many
+-- Get historical prices from 
+SELECT p.price, p.currency, p.timestamp FROM prices p
+WHERE p.symbol_id = ? 
+  AND DATETIME(p.timestamp) BETWEEN DATETIME(sqlc.arg(start_date)) AND DATETIME(sqlc.arg(end_date))
+ORDER BY p.timestamp ASC;

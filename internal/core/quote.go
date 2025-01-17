@@ -8,8 +8,9 @@ import (
 )
 
 type Quote struct {
-	Symbol Symbol
-	Price  Price
+	Symbol           Symbol
+	Price            Price
+	HistoricalPrices []SimplePrice
 }
 
 type Symbol struct {
@@ -23,6 +24,12 @@ type Price struct {
 	Timestamp            time.Time
 	OpeningPrice         decimal.Decimal
 	PreviousClosingPrice decimal.Decimal
+}
+
+type SimplePrice struct {
+	Price     decimal.Decimal
+	Currency  string
+	Timestamp time.Time
 }
 
 func (p Price) PriceChangeAbsolute() decimal.Decimal {
@@ -45,5 +52,6 @@ func (p Price) PriceChangePercentage() decimal.Decimal {
 }
 
 type QuoteService interface {
-	GetQuote(ctx context.Context, tickerSymbol string) (Quote, error)
+	GetQuote(ctx context.Context, tickerSymbol string, startDate time.Time, endDate time.Time) (Quote, error)
+	ClearCache(ctx context.Context, tickerSymbol string) error
 }

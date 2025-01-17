@@ -44,8 +44,25 @@ func (c *CurrencyService) ConvertQuoteCurrency(ctx context.Context, quote core.Q
 		return core.Quote{}, err
 	}
 
+	newPreviousClosingPrice, err := c.ConvertCurrency(ctx, quote.Price.PreviousClosingPrice, quote.Price.Currency, toCurrency)
+	if err != nil {
+		return core.Quote{}, err
+	}
+
 	quote.Price.Price = newPrice
 	quote.Price.OpeningPrice = newOpeningPrice
+	quote.Price.PreviousClosingPrice = newPreviousClosingPrice
 	quote.Price.Currency = toCurrency
+
+	if len(quote.HistoricalPrices) > 0 {
+		for i, price := range quote.HistoricalPrices {
+			newHistoricalPrice, err := c.ConvertCurrency(ctx, price.Price, price.Currency, toCurrency)
+			if err != nil {
+				return core.Quote{}, err
+			}
+			quote.HistoricalPrices[i].Price = newHistoricalPrice
+			quote.HistoricalPrices[i].Currency = toCurrency
+		}
+	}
 	return quote, nil
 }

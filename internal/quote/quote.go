@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/bjarke-xyz/stonks/internal/core"
 	"github.com/bjarke-xyz/stonks/internal/repository/db"
+	"github.com/bjarke-xyz/stonks/internal/repository/db/dao"
 )
 
 type QuoteService struct {
@@ -18,9 +20,12 @@ func NewQuoteService(appContext *core.AppContext) core.QuoteService {
 	return &QuoteService{appContext: appContext}
 }
 
-func (q *QuoteService) GetQuote(ctx context.Context, tickerSymbol string) (core.Quote, error) {
+func (q *QuoteService) ClearCache(ctx context.Context, tickerSymbol string) error {
+	return q.appContext.Deps.Cache.DeleteByPrefix("QUOTE:" + tickerSymbol)
+}
+func (q *QuoteService) GetQuote(ctx context.Context, tickerSymbol string, startDate time.Time, endDate time.Time) (core.Quote, error) {
 	tickerSymbol = strings.ToUpper(tickerSymbol)
-	cacheKey := "QUOTE:v2:" + tickerSymbol
+	cacheKey := fmt.Sprintf("QUOTE:%v:%v:%v", tickerSymbol, startDate.Unix(), endDate.Unix())
 	quote := core.Quote{}
 	inCache, _ := q.appContext.Deps.Cache.GetObj(cacheKey, &quote)
 	if inCache {
@@ -39,7 +44,24 @@ func (q *QuoteService) GetQuote(ctx context.Context, tickerSymbol string) (core.
 
 	priceQuote, err := queries.GetQuote(ctx, symbol.ID)
 	if err != nil {
-		return core.Quote{}, fmt.Errorf("error getting price for symbol %+v: %w", symbol, err)
+		return core.Quote{}, fmt.Errorf("error getting price for symbol %v: %w", symbol.Symbol, err)
+	}
+
+	dbHistoricalPrices, err := queries.GetHistoricalPrices(ctx, dao.GetHistoricalPricesParams{
+		SymbolID:  symbol.ID,
+		StartDate: startDate,
+		EndDate:   endDate,
+	})
+	if err != nil {
+		return core.Quote{}, fmt.Errorf("error getting historical prices for symbol %v: %w", symbol.Symbol, err)
+	}
+	historicalPrices := make([]core.SimplePrice, len(dbHistoricalPrices))
+	for i, histPrice := range dbHistoricalPrices {
+		historicalPrices[i] = core.SimplePrice{
+			Price:     histPrice.Price,
+			Currency:  histPrice.Currency,
+			Timestamp: histPrice.Timestamp,
+		}
 	}
 
 	quote = core.Quote{
@@ -54,6 +76,7 @@ func (q *QuoteService) GetQuote(ctx context.Context, tickerSymbol string) (core.
 			OpeningPrice:         priceQuote.OpeningPrice,
 			PreviousClosingPrice: priceQuote.PreviousClosingPrice,
 		},
+		HistoricalPrices: historicalPrices,
 	}
 	q.appContext.Deps.Cache.InsertObj(cacheKey, quote, 30)
 	return quote, nil

@@ -1,20 +1,22 @@
 package views
 
 import (
+	"fmt"
 	"github.com/bjarke-xyz/stonks/internal/core"
 	"time"
 )
 
 type QuoteViewModel struct {
-	Base  BaseViewModel
-	Quote core.Quote
+	Base           BaseViewModel
+	Quote          core.Quote
+	ChartPngBase64 string
 }
 
 templ quoteTable(model QuoteViewModel) {
 	<div class="container mx-auto">
 		<div class="overflow-x-auto">
-			<table class="table w-full border 0">
-				<!-- Table Head -->
+			<h1>Current price</h1>
+			<table class="table w-full border">
 				<thead>
 					<tr class="bg-primary text-white">
 						<th class="px-4 py-2">Symbol</th>
@@ -28,9 +30,7 @@ templ quoteTable(model QuoteViewModel) {
 						<th class="px-4 py-2">Timestamp</th>
 					</tr>
 				</thead>
-				<!-- Table Body -->
 				<tbody>
-					<!-- Row 1 -->
 					<tr class="">
 						<td class="px-4 py-2">{ model.Quote.Symbol.Symbol }</td>
 						<td class="px-4 py-2">{ model.Quote.Symbol.Name }</td>
@@ -40,11 +40,38 @@ templ quoteTable(model QuoteViewModel) {
 						<td class="px-4 py-2 text-right">{ model.Quote.Price.PriceChangePercentage().StringFixed(2) }%</td>
 						<td class="px-4 py-2 text-right">{ model.Quote.Price.PreviousClosingPrice.String() }</td>
 						<td class="px-4 py-2">{ model.Quote.Price.Currency }</td>
-						<td class="px-4 py-2" title={ model.Quote.Price.Timestamp.Format(time.RFC3339) }>{ model.Quote.Price.Timestamp.Format(time.Stamp) }</td>
+						<td class="px-4 py-2" title={ model.Quote.Price.Timestamp.Format(time.RFC3339) }>{ model.Quote.Price.Timestamp.Format(time.RFC3339) }</td>
 					</tr>
-					<!-- Additional Rows as needed -->
 				</tbody>
 			</table>
+			<h1 class="mt-12">Historical prices</h1>
+			<table class="table w-full border">
+				<thead>
+					<tr class="bg-primary text-white">
+						<th class="px-4 py-2">Timestamp</th>
+						<th class="px-4 py-2">Price</th>
+						<th class="px-4 py-2">Currency</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, price := range model.Quote.HistoricalPrices {
+						<tr>
+							<td class="px-4 py-2">
+								{ price.Timestamp.Format(time.RFC3339) }
+							</td>
+							<td class="px-4 py-2 text-right">
+								{ price.Price.String() }
+							</td>
+							<td class="px-4 py-2">
+								{ price.Currency }
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+			if len(model.ChartPngBase64) > 0 {
+				<img src={ fmt.Sprintf("data:image/png;base64,%v", model.ChartPngBase64) }/>
+			}
 		</div>
 	</div>
 }

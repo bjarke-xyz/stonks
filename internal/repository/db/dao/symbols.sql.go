@@ -64,6 +64,49 @@ func (q *Queries) GetAllScrapingSources(ctx context.Context) ([]ScrapingSource, 
 	return items, nil
 }
 
+const getHistoricalPrices = `-- name: GetHistoricalPrices :many
+SELECT p.price, p.currency, p.timestamp FROM prices p
+WHERE p.symbol_id = ? 
+  AND DATETIME(p.timestamp) BETWEEN DATETIME(?2) AND DATETIME(?3)
+ORDER BY p.timestamp ASC
+`
+
+type GetHistoricalPricesParams struct {
+	SymbolID  int64       `json:"symbol_id"`
+	StartDate interface{} `json:"start_date"`
+	EndDate   interface{} `json:"end_date"`
+}
+
+type GetHistoricalPricesRow struct {
+	Price     decimal.Decimal `json:"price"`
+	Currency  string          `json:"currency"`
+	Timestamp time.Time       `json:"timestamp"`
+}
+
+// Get historical prices from
+func (q *Queries) GetHistoricalPrices(ctx context.Context, arg GetHistoricalPricesParams) ([]GetHistoricalPricesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getHistoricalPrices, arg.SymbolID, arg.StartDate, arg.EndDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetHistoricalPricesRow
+	for rows.Next() {
+		var i GetHistoricalPricesRow
+		if err := rows.Scan(&i.Price, &i.Currency, &i.Timestamp); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getLatestPriceForSymbol = `-- name: GetLatestPriceForSymbol :one
 SELECT id, symbol_id, price, currency, timestamp
 FROM prices p
