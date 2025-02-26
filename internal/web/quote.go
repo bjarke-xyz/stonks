@@ -63,6 +63,10 @@ func (w *web) HandleGetQuote(c *gin.Context) {
 		c.HTML(http.StatusOK, "", views.QuoteTable(model))
 		return
 	}
+	if format == "xml" {
+		c.XML(http.StatusOK, quote)
+		return
+	}
 
 	c.HTML(http.StatusOK, "", views.Quote(model))
 }
