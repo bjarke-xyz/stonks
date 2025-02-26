@@ -13,6 +13,13 @@ type Quote struct {
 	HistoricalPrices []SimplePrice
 }
 
+func (q Quote) ToSerializableQuote() SerializableQuote {
+	return SerializableQuote{
+		Quote: q,
+		Price: q.Price.ToSerializablePrice(),
+	}
+}
+
 type Symbol struct {
 	Symbol string
 	Name   string
@@ -49,6 +56,24 @@ func (p Price) PriceChangePercentage() decimal.Decimal {
 	}
 
 	return decimal.NewFromInt(0)
+}
+func (p Price) ToSerializablePrice() SerializablePrice {
+	return SerializablePrice{
+		Price:                 p,
+		PriceChangeAbsolute:   p.PriceChangeAbsolute(),
+		PriceChangePercentage: p.PriceChangePercentage(),
+	}
+}
+
+type SerializablePrice struct {
+	Price
+	PriceChangeAbsolute   decimal.Decimal
+	PriceChangePercentage decimal.Decimal
+}
+
+type SerializableQuote struct {
+	Quote
+	Price SerializablePrice
 }
 
 type QuoteService interface {

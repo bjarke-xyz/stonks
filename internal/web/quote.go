@@ -64,7 +64,8 @@ func (w *web) HandleGetQuote(c *gin.Context) {
 		return
 	}
 	if format == "xml" {
-		c.XML(http.StatusOK, quote)
+		serializableQuote := quote.ToSerializableQuote()
+		c.XML(http.StatusOK, serializableQuote)
 		return
 	}
 
