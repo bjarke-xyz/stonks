@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/bjarke-xyz/stonks/internal/core"
 	"github.com/gin-gonic/gin"
@@ -31,12 +32,14 @@ func (a *api) RunJob() gin.HandlerFunc {
 		}
 
 		fireAndForget := c.Query("fireAndForget") == "true"
-		//using context.Background to not cancel, if this method times out
-		ctx := context.Background()
 
 		if fireAndForget {
+			// Do not use request context when using fireAndForget, timeout after 5 mins
+			ctx := context.Background()
+			ctx, _ = context.WithTimeout(ctx, time.Minute*5)
 			go a.appContext.Deps.ScraperService.ScrapeSymbols(ctx)
 		} else {
+			ctx := c.Request.Context()
 			a.appContext.Deps.ScraperService.ScrapeSymbols(ctx)
 		}
 		c.Status(http.StatusOK)
