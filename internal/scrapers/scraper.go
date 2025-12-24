@@ -22,25 +22,13 @@ type Scraper interface {
 }
 
 const (
-	ScrapingSourceIdentifierBORSFRA        = "BORSFRA"
-	ScrapingSourceIdentifierMARKETSCREENER = "MARKSCREE"
-	ScrapingSourceIdentifierNASDAQ         = "NASDAQ"
-	ScrapingSourceIdentifierNASDAQ_EU      = "NASDAQ_EU"
-	ScrapingSourceIdentifierYAHOO          = "YAHOO"
+	ScrapingSourceIdentifierBORSFRA = "BORSFRA"
 )
 
 func MakeScraper(scrapingSourceIdentifier string, appContext *core.AppContext) (Scraper, error) {
 	switch scrapingSourceIdentifier {
 	case ScrapingSourceIdentifierBORSFRA:
 		return NewBorseFrankfurtScraper(appContext), nil
-	case ScrapingSourceIdentifierMARKETSCREENER:
-		return NewMarketscreenerScraper(appContext), nil
-	case ScrapingSourceIdentifierNASDAQ:
-		return NewNasdaqScraper(appContext), nil
-	case ScrapingSourceIdentifierNASDAQ_EU:
-		return NewNasdaqEuScraper(appContext), nil
-	case ScrapingSourceIdentifierYAHOO:
-		return NewYahooScraper(appContext), nil
 	default:
 		return nil, fmt.Errorf("error making scraper, invalid scraping source identifier: %v", scrapingSourceIdentifier)
 	}
