@@ -28,6 +28,8 @@ type Config struct {
 	BuildTime *time.Time
 
 	CookieSecret string
+
+	YFinanceAPIAuthKey string
 }
 
 const (
@@ -72,6 +74,7 @@ func NewConfig() (*Config, error) {
 		JobKey:                  os.Getenv("JOB_KEY"),
 		AppEnv:                  os.Getenv("APP_ENV"),
 		CookieSecret:            os.Getenv("COOKIE_SECRET"),
+		YFinanceAPIAuthKey:      os.Getenv("YFINANCEAPI_AUTH_KEY"),
 		BuildTime:               buildTime,
 	}, nil
 }
