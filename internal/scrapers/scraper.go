@@ -26,6 +26,7 @@ const (
 	ScrapingSourceIdentifierMARKETSCREENER = "MARKSCREE"
 	ScrapingSourceIdentifierNASDAQ         = "NASDAQ"
 	ScrapingSourceIdentifierNASDAQ_EU      = "NASDAQ_EU"
+	ScrapingSourceIdentifierYAHOO          = "YAHOO"
 )
 
 func MakeScraper(scrapingSourceIdentifier string, appContext *core.AppContext) (Scraper, error) {
@@ -38,6 +39,8 @@ func MakeScraper(scrapingSourceIdentifier string, appContext *core.AppContext) (
 		return NewNasdaqScraper(appContext), nil
 	case ScrapingSourceIdentifierNASDAQ_EU:
 		return NewNasdaqEuScraper(appContext), nil
+	case ScrapingSourceIdentifierYAHOO:
+		return NewYahooScraper(appContext), nil
 	default:
 		return nil, fmt.Errorf("error making scraper, invalid scraping source identifier: %v", scrapingSourceIdentifier)
 	}
