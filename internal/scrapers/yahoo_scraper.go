@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/bjarke-xyz/stonks/internal/core"
 	"github.com/bjarke-xyz/stonks/internal/repository/db"
 	"github.com/bjarke-xyz/stonks/internal/repository/db/dao"
@@ -64,13 +65,16 @@ func (y *YahooScraper) Scrape(ctx context.Context, symbol dao.Symbol) (ScrapeRes
 	}
 	bodyStr := string(bodyBytes)
 
-	// Find price in <span data-testid="qsp-price">VALUE</span>
-	re := regexp.MustCompile(`<span[^>]*data-testid="qsp-price"[^>]*>([^<]+)</span>`)
-	m := re.FindStringSubmatch(bodyStr)
-	if len(m) < 2 {
+	// Find price using goquery: <span data-testid="qsp-price">VALUE</span>
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(bodyStr))
+	if err != nil {
+		return ScrapeResult{}, fmt.Errorf("error parsing HTML document: %w", err)
+	}
+	priceSel := doc.Find(`span[data-testid="qsp-price"]`).First()
+	if priceSel.Length() == 0 {
 		return ScrapeResult{}, fmt.Errorf("couldn't find price span in page")
 	}
-	priceRaw := strings.TrimSpace(m[1])
+	priceRaw := strings.TrimSpace(priceSel.Text())
 	priceRaw = strings.ReplaceAll(priceRaw, ",", "")
 	price, err := decimal.NewFromString(priceRaw)
 	if err != nil {
