@@ -15,7 +15,7 @@ require (
 	github.com/prometheus/client_golang v1.20.5
 	github.com/samber/lo v1.47.0
 	github.com/shopspring/decimal v1.4.0
-	github.com/tursodatabase/libsql-client-go v0.0.0-20240902231107-85af5b9d094d
+	github.com/tursodatabase/libsql-client-go v0.0.0-20251219100830-236aa1ff8acc
 	github.com/vicanso/go-charts/v2 v2.6.10
 )
 
