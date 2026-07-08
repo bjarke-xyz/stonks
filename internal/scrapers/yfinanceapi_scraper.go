@@ -10,7 +10,6 @@ import (
 
 	"github.com/bjarke-xyz/stonks/internal/core"
 	"github.com/bjarke-xyz/stonks/internal/repository/db"
-	"github.com/bjarke-xyz/stonks/internal/repository/db/dao"
 	"github.com/shopspring/decimal"
 )
 
@@ -28,13 +27,13 @@ func (y *YFinanceAPIScraper) SourceIdentifier() string {
 }
 
 // Scrape implements Scraper.
-func (y *YFinanceAPIScraper) Scrape(ctx context.Context, symbol dao.Symbol) (ScrapeResult, error) {
-	queries, err := db.OpenQueries(y.appContext.Config)
+func (y *YFinanceAPIScraper) Scrape(ctx context.Context, symbol db.Symbol) (ScrapeResult, error) {
+	repo, err := db.OpenRepo(y.appContext.Config)
 	if err != nil {
 		return ScrapeResult{}, fmt.Errorf("error opening db: %w", err)
 	}
 
-	scrapingSource, err := queries.GetScrapingSourceByID(ctx, y.SourceIdentifier())
+	scrapingSource, err := repo.ScrapingSourceByID(ctx, y.SourceIdentifier())
 	if err != nil {
 		return ScrapeResult{}, fmt.Errorf("error getting scraping source: %w", err)
 	}

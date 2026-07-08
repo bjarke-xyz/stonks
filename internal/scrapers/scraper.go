@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/bjarke-xyz/stonks/internal/core"
-	"github.com/bjarke-xyz/stonks/internal/repository/db/dao"
+	"github.com/bjarke-xyz/stonks/internal/repository/db"
 	"github.com/shopspring/decimal"
 )
 
@@ -17,7 +17,7 @@ type ScrapeResult struct {
 }
 
 type Scraper interface {
-	Scrape(ctx context.Context, symbol dao.Symbol) (ScrapeResult, error)
+	Scrape(ctx context.Context, symbol db.Symbol) (ScrapeResult, error)
 	SourceIdentifier() string
 }
 

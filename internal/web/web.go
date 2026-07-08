@@ -38,27 +38,24 @@ func (w *web) getBaseModel(c *gin.Context, title string) views.BaseViewModel {
 	} else {
 		unixBuildTime = time.Now().Unix()
 	}
-	// hxRequest := c.Request.Header.Get("HX-Request")
-	// includeLayout := hxRequest == "" || hxRequest == "false"
-	// log.Println("hxRequest", hxRequest, "includeLayout", includeLayout)
-	model := views.BaseViewModel{
+	var flashes []views.Flash
+	for _, flashType := range []string{core.FlashTypeError, core.FlashTypeWarn, core.FlashTypeInfo} {
+		flashes = append(flashes, views.FlashesOf(flashType, GetFlashes(c, flashType))...)
+	}
+	return views.BaseViewModel{
 		Path:          c.Request.URL.Path,
 		UnixBuildTime: unixBuildTime,
 		Title:         title + " | stonks",
-		FlashInfo:     GetFlashes(c, core.FlashTypeInfo),
-		FlashWarn:     GetFlashes(c, core.FlashTypeWarn),
-		FlashError:    GetFlashes(c, core.FlashTypeError),
+		Flashes:       flashes,
 	}
-	return model
 }
 
 func (w *web) handleError(c *gin.Context, err error) {
 	log.Printf("error: %v", err)
-	errViewModel := views.ErrViewModel{
+	c.HTML(http.StatusInternalServerError, "error.html", views.ErrViewModel{
 		Base:  w.getBaseModel(c, "error"),
 		Error: err,
-	}
-	c.HTML(http.StatusInternalServerError, "", views.Error(errViewModel))
+	})
 }
 
 func staticFiles(r *gin.Engine, staticFs fs.FS) {

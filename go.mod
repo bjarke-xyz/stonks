@@ -4,11 +4,9 @@ go 1.26.0
 
 require (
 	github.com/Depado/ginprom v1.8.3
-	github.com/a-h/templ v0.3.977
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-contrib/sessions v1.0.4
 	github.com/gin-gonic/gin v1.11.0
-	github.com/jmoiron/sqlx v1.4.0
 	github.com/joho/godotenv v1.5.1
 	github.com/pressly/goose/v3 v3.27.0
 	github.com/prometheus/client_golang v1.23.2

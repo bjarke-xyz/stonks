@@ -17,7 +17,7 @@ import (
 	"github.com/bjarke-xyz/stonks/internal/core"
 	"github.com/bjarke-xyz/stonks/internal/repository/db"
 	"github.com/bjarke-xyz/stonks/internal/web"
-	"github.com/bjarke-xyz/stonks/internal/web/renderer"
+	"github.com/bjarke-xyz/stonks/internal/web/views"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -45,7 +45,7 @@ func main() {
 		log.Printf("error opening db: %v", err)
 	}
 	if dbConn != nil {
-		err = db.Migrate("up", dbConn.DB)
+		err = db.Migrate("up", dbConn)
 		if err != nil {
 			log.Printf("failed to migrate: %v", err)
 		}
@@ -112,8 +112,7 @@ func ginRouter(cfg *config.Config) *gin.Engine {
 	if cfg.AppEnv == config.AppEnvProduction {
 		r.TrustedPlatform = gin.PlatformCloudflare
 	}
-	ginHtmlRenderer := r.HTMLRender
-	r.HTMLRender = &renderer.HTMLTemplRenderer{FallbackHtmlRenderer: ginHtmlRenderer}
+	r.HTMLRender = views.Renderer{}
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status": "ok",

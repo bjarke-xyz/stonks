@@ -9,7 +9,6 @@ import (
 
 	"github.com/bjarke-xyz/stonks/internal/core"
 	"github.com/bjarke-xyz/stonks/internal/repository/db"
-	"github.com/bjarke-xyz/stonks/internal/repository/db/dao"
 )
 
 type QuoteService struct {
@@ -32,26 +31,22 @@ func (q *QuoteService) GetQuote(ctx context.Context, tickerSymbol string, startD
 		log.Printf("got %v quote from cache", tickerSymbol)
 		return quote, nil
 	}
-	queries, err := db.OpenQueries(q.appContext.Config)
+	repo, err := db.OpenRepo(q.appContext.Config)
 	if err != nil {
-		return core.Quote{}, fmt.Errorf("error opening queries: %w", err)
+		return core.Quote{}, fmt.Errorf("error opening repo: %w", err)
 	}
 
-	symbol, err := queries.GetSymbolByTicker(ctx, tickerSymbol)
+	symbol, err := repo.SymbolByTicker(ctx, tickerSymbol)
 	if err != nil {
 		return core.Quote{}, fmt.Errorf("error getting symbol: %w", err)
 	}
 
-	priceQuote, err := queries.GetQuote(ctx, symbol.ID)
+	priceQuote, err := repo.Quote(ctx, symbol.ID)
 	if err != nil {
 		return core.Quote{}, fmt.Errorf("error getting price for symbol %v: %w", symbol.Symbol, err)
 	}
 
-	dbHistoricalPrices, err := queries.GetHistoricalPrices(ctx, dao.GetHistoricalPricesParams{
-		SymbolID:  symbol.ID,
-		StartDate: startDate,
-		EndDate:   endDate,
-	})
+	dbHistoricalPrices, err := repo.HistoricalPrices(ctx, symbol.ID, startDate, endDate)
 	if err != nil {
 		return core.Quote{}, fmt.Errorf("error getting historical prices for symbol %v: %w", symbol.Symbol, err)
 	}

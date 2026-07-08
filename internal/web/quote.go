@@ -2,6 +2,7 @@ package web
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
 	"time"
 
@@ -49,12 +50,12 @@ func (w *web) HandleGetQuote(c *gin.Context) {
 	model := views.QuoteViewModel{
 		Base:     w.getBaseModel(c, quote.Symbol.Symbol+" | Quote"),
 		Quote:    quote,
-		ChartSvg: chartSvg,
+		ChartSvg: template.HTML(chartSvg),
 	}
 
 	format := c.Query("format")
 	if format == "table" {
-		c.HTML(http.StatusOK, "", views.QuoteTable(model))
+		c.HTML(http.StatusOK, "quote_table.html", model)
 		return
 	}
 	if format == "xml" {
@@ -63,7 +64,7 @@ func (w *web) HandleGetQuote(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "", views.Quote(model))
+	c.HTML(http.StatusOK, "quote.html", model)
 }
 
 func makeChart(quote core.Quote) string {

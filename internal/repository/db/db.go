@@ -1,13 +1,10 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	"sync"
 
-	"github.com/bjarke-xyz/stonks/internal/repository/db/dao"
-	"github.com/jmoiron/sqlx"
-
-	// _ "github.com/mattn/go-sqlite3"
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
 
@@ -15,29 +12,33 @@ type ConnectionStringer interface {
 	ConnectionString() string
 }
 
-var connections map[string]*sqlx.DB = make(map[string]*sqlx.DB)
+var connections map[string]*sql.DB = make(map[string]*sql.DB)
 var lock sync.RWMutex
 
-func Open(connStringer ConnectionStringer) (*sqlx.DB, error) {
+func Open(connStringer ConnectionStringer) (*sql.DB, error) {
 	lock.Lock()
 	defer lock.Unlock()
 	existingDb, ok := connections[connStringer.ConnectionString()]
 	if ok {
 		return existingDb, nil
-	} else {
-		db, err := sqlx.Open("libsql", connStringer.ConnectionString())
-		if err != nil {
-			return nil, fmt.Errorf("failed to connect to db: %w", err)
-		}
-		connections[connStringer.ConnectionString()] = db
-		return db, nil
 	}
+	db, err := sql.Open("libsql", connStringer.ConnectionString())
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to db: %w", err)
+	}
+	connections[connStringer.ConnectionString()] = db
+	return db, nil
 }
 
-func OpenQueries(connStringer ConnectionStringer) (*dao.Queries, error) {
-	db, err := Open(connStringer)
+// Repo owns the SQL. Callers only ever see the model types in models.go.
+type Repo struct {
+	db *sql.DB
+}
+
+func OpenRepo(connStringer ConnectionStringer) (*Repo, error) {
+	conn, err := Open(connStringer)
 	if err != nil {
 		return nil, err
 	}
-	return dao.New(db), nil
+	return &Repo{db: conn}, nil
 }

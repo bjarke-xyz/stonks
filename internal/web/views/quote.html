@@ -1,0 +1,17 @@
+{{ define "content" }}
+	<div class="card">
+		<h2 class="card-title">
+			<span class="symbol">{{ .Quote.Symbol.Symbol }}</span>
+			<span class="symbol-name">{{ .Quote.Symbol.Name }}</span>
+		</h2>
+		<div class="card-row">
+			<div>
+				<span class="price">{{ .Quote.Price.Price.String }}</span>
+				<span class="currency">{{ .Quote.Price.Currency }}</span>
+			</div>
+			<time class="muted" title="{{ rfc3339 .Quote.Price.Timestamp }}">
+				{{ stamp .Quote.Price.Timestamp }}
+			</time>
+		</div>
+	</div>
+{{ end }}

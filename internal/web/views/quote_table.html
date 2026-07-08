@@ -1,0 +1,57 @@
+{{ define "content" }}
+	<h1>Current price</h1>
+	<div class="table-scroll">
+		<table class="data-table">
+			<thead>
+				<tr>
+					<th>Symbol</th>
+					<th>Name</th>
+					<th class="num">Latest price</th>
+					<th class="num">Opening price</th>
+					<th class="num">Change (Absolute)</th>
+					<th class="num">Change (Percentage)</th>
+					<th class="num">Previous day closing price</th>
+					<th>Currency</th>
+					<th>Timestamp</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>{{ .Quote.Symbol.Symbol }}</td>
+					<td>{{ .Quote.Symbol.Name }}</td>
+					<td class="num">{{ .Quote.Price.Price.String }}</td>
+					<td class="num">{{ .Quote.Price.OpeningPrice.String }}</td>
+					<td class="num">{{ .Quote.Price.PriceChangeAbsolute.StringFixed 2 }}</td>
+					<td class="num">{{ .Quote.Price.PriceChangePercentage.StringFixed 2 }}%</td>
+					<td class="num">{{ .Quote.Price.PreviousClosingPrice.String }}</td>
+					<td>{{ .Quote.Price.Currency }}</td>
+					<td>{{ rfc3339 .Quote.Price.Timestamp }}</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+
+	<h1>Historical prices</h1>
+	<div class="table-scroll">
+		<table class="data-table">
+			<thead>
+				<tr>
+					<th>Timestamp</th>
+					<th class="num">Price</th>
+					<th>Currency</th>
+				</tr>
+			</thead>
+			<tbody>
+				{{ range .Quote.HistoricalPrices }}
+					<tr>
+						<td>{{ rfc3339 .Timestamp }}</td>
+						<td class="num">{{ .Price.String }}</td>
+						<td>{{ .Currency }}</td>
+					</tr>
+				{{ end }}
+			</tbody>
+		</table>
+	</div>
+
+	{{ with .ChartSvg }}<div class="chart">{{ . }}</div>{{ end }}
+{{ end }}

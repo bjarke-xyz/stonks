@@ -3,9 +3,6 @@
 # https://hub.docker.com/_/golang
 FROM golang:1.26-bookworm as builder
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    npm nodejs
-
 # Create and change to the app directory.
 WORKDIR /app
 
@@ -17,12 +14,6 @@ RUN go mod download
 
 # Copy local code to the container image.
 COPY . ./
-
-# Install templ binary
-RUN go install github.com/a-h/templ/cmd/templ@latest 
-
-# Install sqlc binary
-RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 
 # Build the binary.
 RUN make build

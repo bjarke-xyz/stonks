@@ -10,7 +10,6 @@ import (
 
 	"github.com/bjarke-xyz/stonks/internal/core"
 	"github.com/bjarke-xyz/stonks/internal/repository/db"
-	"github.com/bjarke-xyz/stonks/internal/repository/db/dao"
 	"github.com/shopspring/decimal"
 )
 
@@ -28,16 +27,13 @@ func (b *BorseFrankfurtScraper) SourceIdentifier() string {
 }
 
 // Scrape implements Scraper.
-func (b *BorseFrankfurtScraper) Scrape(ctx context.Context, symbol dao.Symbol) (ScrapeResult, error) {
-	queries, err := db.OpenQueries(b.appContext.Config)
+func (b *BorseFrankfurtScraper) Scrape(ctx context.Context, symbol db.Symbol) (ScrapeResult, error) {
+	repo, err := db.OpenRepo(b.appContext.Config)
 	if err != nil {
 		return ScrapeResult{}, fmt.Errorf("error opening db: %w", err)
 	}
 
-	symbolSource, err := queries.GetSymbolSource(ctx, dao.GetSymbolSourceParams{
-		SymbolID: symbol.ID,
-		SourceID: b.SourceIdentifier(),
-	})
+	symbolSource, err := repo.SymbolSource(ctx, symbol.ID, b.SourceIdentifier())
 	if err != nil {
 		return ScrapeResult{}, fmt.Errorf("error getting symbol source: %w", err)
 	}

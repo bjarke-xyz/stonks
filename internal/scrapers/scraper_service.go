@@ -2,14 +2,12 @@ package scrapers
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/bjarke-xyz/stonks/internal/core"
 	"github.com/bjarke-xyz/stonks/internal/repository/db"
-	"github.com/bjarke-xyz/stonks/internal/repository/db/dao"
 	"github.com/samber/lo"
 )
 
@@ -30,25 +28,25 @@ func (s *ScraperService) ScrapeSymbols(ctx context.Context) {
 }
 
 func (s *ScraperService) internalScrapeSymbols(ctx context.Context) error {
-	queries, err := db.OpenQueries(s.appContext.Config)
+	repo, err := db.OpenRepo(s.appContext.Config)
 	if err != nil {
 		return fmt.Errorf("error opening db")
 	}
 
-	scrapeSources, err := queries.GetSourcesNotScrapedRecently(ctx)
+	scrapeSources, err := repo.SourcesNotScrapedRecently(ctx)
 	if err != nil {
 		return fmt.Errorf("error getting sources not scraped recently: %w", err)
 	}
 
 	log.Printf("found %v scrape sources that has not been scraped recently", len(scrapeSources))
 
-	groupedScrapeSources := lo.GroupBy(scrapeSources, func(ss dao.SymbolSource) string {
+	groupedScrapeSources := lo.GroupBy(scrapeSources, func(ss db.SymbolSource) string {
 		return ss.SourceID
 	})
 
 	for sourceIdentifier, scrapeSources := range groupedScrapeSources {
-		symbolIds := lo.Map(scrapeSources, func(ss dao.SymbolSource, _ int) int64 { return ss.SymbolID })
-		err := s.scrapeSymbolsForSourceIdentifier(ctx, queries, sourceIdentifier, symbolIds)
+		symbolIds := lo.Map(scrapeSources, func(ss db.SymbolSource, _ int) int64 { return ss.SymbolID })
+		err := s.scrapeSymbolsForSourceIdentifier(ctx, repo, sourceIdentifier, symbolIds)
 		if err != nil {
 			return fmt.Errorf("error scraping symbols for source identifier %v: %w", sourceIdentifier, err)
 		}
@@ -56,14 +54,14 @@ func (s *ScraperService) internalScrapeSymbols(ctx context.Context) error {
 	return nil
 }
 
-func (s *ScraperService) scrapeSymbolsForSourceIdentifier(ctx context.Context, queries *dao.Queries, sourceIdentifier string, symbolIds []int64) error {
+func (s *ScraperService) scrapeSymbolsForSourceIdentifier(ctx context.Context, repo *db.Repo, sourceIdentifier string, symbolIds []int64) error {
 	scraper, err := MakeScraper(sourceIdentifier, s.appContext)
 	if err != nil {
 		return fmt.Errorf("error making scraping: %w", err)
 	}
 
 	for _, symbolId := range symbolIds {
-		err = s.scrapeAndStoreSymbol(ctx, queries, scraper, symbolId)
+		err = s.scrapeAndStoreSymbol(ctx, repo, scraper, symbolId)
 		if err != nil {
 			return fmt.Errorf("error scraping and storing symbol: %w", err)
 		}
@@ -71,8 +69,8 @@ func (s *ScraperService) scrapeSymbolsForSourceIdentifier(ctx context.Context, q
 	return nil
 }
 
-func (s *ScraperService) scrapeAndStoreSymbol(ctx context.Context, queries *dao.Queries, scraper Scraper, symbolId int64) error {
-	symbol, err := queries.GetSymbolByID(ctx, symbolId)
+func (s *ScraperService) scrapeAndStoreSymbol(ctx context.Context, repo *db.Repo, scraper Scraper, symbolId int64) error {
+	symbol, err := repo.SymbolByID(ctx, symbolId)
 	if err != nil {
 		return fmt.Errorf("error getting symbol for id %v: %w", symbolId, err)
 	}
@@ -82,22 +80,13 @@ func (s *ScraperService) scrapeAndStoreSymbol(ctx context.Context, queries *dao.
 		return fmt.Errorf("error scraping symbol %+v: %w", symbol, err)
 	}
 
-	err = queries.InsertPrice(ctx, dao.InsertPriceParams{
-		SymbolID:  symbol.ID,
-		Price:     scrapeResult.Price,
-		Currency:  scrapeResult.Currency,
-		Timestamp: scrapeResult.Timestamp,
-	})
+	err = repo.InsertPrice(ctx, symbol.ID, scrapeResult.Price, scrapeResult.Currency, scrapeResult.Timestamp)
 	if err != nil {
 		return fmt.Errorf("error inserting price for symbol %+v: %w", symbol, err)
 	}
 	log.Printf("scraped symbol %v: %v (%v) at %v", symbol.Symbol, scrapeResult.Price, scrapeResult.Currency, scrapeResult.Timestamp)
 
-	err = queries.UpdateLastScraped(ctx, dao.UpdateLastScrapedParams{
-		LastScraped: sql.NullTime{Time: time.Now().UTC(), Valid: true},
-		SymbolID:    symbol.ID,
-		SourceID:    scraper.SourceIdentifier(),
-	})
+	err = repo.UpdateLastScraped(ctx, symbol.ID, scraper.SourceIdentifier(), time.Now().UTC())
 	if err != nil {
 		// not important if this fails, just log it, dont return the err
 		log.Printf("failed to update last scraped timestamp for symbol %v, source %v: %v", symbol.ID, scraper.SourceIdentifier(), err)
