@@ -1,15 +1,14 @@
 package views
 
 import (
-	"fmt"
 	"github.com/bjarke-xyz/stonks/internal/core"
 	"time"
 )
 
 type QuoteViewModel struct {
-	Base           BaseViewModel
-	Quote          core.Quote
-	ChartPngBase64 string
+	Base     BaseViewModel
+	Quote    core.Quote
+	ChartSvg string
 }
 
 templ quoteTable(model QuoteViewModel) {
@@ -69,8 +68,8 @@ templ quoteTable(model QuoteViewModel) {
 					}
 				</tbody>
 			</table>
-			if len(model.ChartPngBase64) > 0 {
-				<img src={ fmt.Sprintf("data:image/png;base64,%v", model.ChartPngBase64) }/>
+			if len(model.ChartSvg) > 0 {
+				@templ.Raw(model.ChartSvg)
 			}
 		</div>
 	</div>
