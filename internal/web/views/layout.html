@@ -5,7 +5,6 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>{{ .Base.Title }}</title>
 		<link href="/static/css/style.css?v={{ .Base.UnixBuildTime }}" rel="stylesheet" />
-		<script src="/static/js/main.js?v={{ .Base.UnixBuildTime }}" defer></script>
 	</head>
 	<body>
 		<div class="page">
@@ -16,13 +15,6 @@
 			</header>
 
 			<main class="content">
-				{{ range .Base.Flashes }}
-					<div class="flash flash-{{ .Type }}">
-						<button class="flash-close" type="button" onclick="handleFlashClick(this)">&times;</button>
-						<p>{{ .Msg }}</p>
-					</div>
-				{{ end }}
-
 				{{ template "content" . }}
 			</main>
 

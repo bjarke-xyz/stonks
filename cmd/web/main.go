@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,18 +11,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Depado/ginprom"
 	"github.com/bjarke-xyz/stonks/internal/api"
 	"github.com/bjarke-xyz/stonks/internal/app"
 	"github.com/bjarke-xyz/stonks/internal/config"
 	"github.com/bjarke-xyz/stonks/internal/core"
 	"github.com/bjarke-xyz/stonks/internal/repository/db"
 	"github.com/bjarke-xyz/stonks/internal/web"
-	"github.com/bjarke-xyz/stonks/internal/web/views"
-	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
-	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -90,39 +85,28 @@ func Server(appContext *core.AppContext) *http.Server {
 }
 
 func routes(appContext *core.AppContext) http.Handler {
-	r := ginRouter(appContext.Config)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", handleHealth)
 
 	apiHandlers := api.NewAPI(appContext)
-	apiHandlers.Route(r)
+	apiHandlers.Route(mux)
 
 	webHandlers := web.NewWeb(appContext)
-	webHandlers.Route(r)
-	return r
+	webHandlers.Route(mux)
+
+	// recovery outermost, so a panic in requestLog or a handler is still caught.
+	return recovery(requestLog(mux))
 }
 
-func ginRouter(cfg *config.Config) *gin.Engine {
-	if cfg.AppEnv == config.AppEnvProduction {
-		gin.SetMode(gin.ReleaseMode)
+func handleHealth(w http.ResponseWriter, r *http.Request) {
+	body, err := json.Marshal(map[string]string{"status": "ok"})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	r := gin.Default()
-	store := cookie.NewStore([]byte(cfg.CookieSecret))
-	r.Use(sessions.Sessions("mysession", store))
-	r.Use(cors.Default())
-	r.SetTrustedProxies(nil)
-	if cfg.AppEnv == config.AppEnvProduction {
-		r.TrustedPlatform = gin.PlatformCloudflare
-	}
-	r.HTMLRender = views.Renderer{}
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status": "ok",
-		})
-	})
-
-	p := ginprom.New()
-	r.Use(p.Instrument())
-
-	return r
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write(body)
 }
 
 func runMetricsServer() {

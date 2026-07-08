@@ -2,6 +2,7 @@ package web
 
 import (
 	"embed"
+	"encoding/xml"
 	"io/fs"
 	"log"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/bjarke-xyz/stonks/internal/core"
 	"github.com/bjarke-xyz/stonks/internal/web/views"
-	"github.com/gin-gonic/gin"
 )
 
 //go:embed static/*
@@ -24,62 +24,97 @@ func NewWeb(appContext *core.AppContext) *web {
 	return &web{appContext: appContext}
 }
 
-func (w *web) Route(r *gin.Engine) {
-	staticFiles(r, static)
-	r.HEAD("/", w.HandleGetIndex)
-	r.GET("/", w.HandleGetIndex)
-	r.GET("/quote/:symbol", w.HandleGetQuote)
+func (h *web) Route(mux *http.ServeMux) {
+	staticFiles(mux, static)
+	// "/{$}" matches only "/". A bare "GET /" is a catch-all prefix and would
+	// swallow every otherwise-unmatched path. GET patterns also serve HEAD.
+	mux.HandleFunc("GET /{$}", h.HandleGetIndex)
+	mux.HandleFunc("GET /quote/{symbol}", h.HandleGetQuote)
+	// gin redirected /quote/AAPL/ to /quote/AAPL. ServeMux would 404 it, so keep
+	// the redirect for bookmarked or hand-typed URLs.
+	mux.HandleFunc("GET /quote/{symbol}/{$}", redirectTrailingSlash)
 }
 
-func (w *web) getBaseModel(c *gin.Context, title string) views.BaseViewModel {
+func redirectTrailingSlash(w http.ResponseWriter, r *http.Request) {
+	target := strings.TrimSuffix(r.URL.Path, "/")
+	if r.URL.RawQuery != "" {
+		target += "?" + r.URL.RawQuery
+	}
+	http.Redirect(w, r, target, http.StatusMovedPermanently)
+}
+
+func (h *web) getBaseModel(r *http.Request, title string) views.BaseViewModel {
 	var unixBuildTime int64 = 0
-	if w.appContext.Config.BuildTime != nil {
-		unixBuildTime = w.appContext.Config.BuildTime.Unix()
+	if h.appContext.Config.BuildTime != nil {
+		unixBuildTime = h.appContext.Config.BuildTime.Unix()
 	} else {
 		unixBuildTime = time.Now().Unix()
 	}
-	var flashes []views.Flash
-	for _, flashType := range []string{core.FlashTypeError, core.FlashTypeWarn, core.FlashTypeInfo} {
-		flashes = append(flashes, views.FlashesOf(flashType, GetFlashes(c, flashType))...)
-	}
 	return views.BaseViewModel{
-		Path:          c.Request.URL.Path,
+		Path:          r.URL.Path,
 		UnixBuildTime: unixBuildTime,
 		Title:         title + " | stonks",
-		Flashes:       flashes,
 	}
 }
 
-func (w *web) handleError(c *gin.Context, err error) {
+func (h *web) handleError(w http.ResponseWriter, r *http.Request, err error) {
 	log.Printf("error: %v", err)
-	c.HTML(http.StatusInternalServerError, "error.html", views.ErrViewModel{
-		Base:  w.getBaseModel(c, "error"),
+	if renderErr := views.Render(w, http.StatusInternalServerError, "error.html", views.ErrViewModel{
+		Base:  h.getBaseModel(r, "error"),
 		Error: err,
-	})
+	}); renderErr != nil {
+		log.Printf("error rendering error page: %v", renderErr)
+	}
 }
 
-func staticFiles(r *gin.Engine, staticFs fs.FS) {
+// queryOr returns the query parameter, or defaultVal when it is absent or empty.
+func queryOr(r *http.Request, key string, defaultVal string) string {
+	if val := r.URL.Query().Get(key); val != "" {
+		return val
+	}
+	return defaultVal
+}
+
+// writeXML mirrors what gin's c.XML emitted: this exact content type, and no
+// XML declaration. LibreOffice Calc consumes /quote/{symbol}?format=xml.
+func writeXML(w http.ResponseWriter, status int, data any) error {
+	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+	w.WriteHeader(status)
+	return xml.NewEncoder(w).Encode(data)
+}
+
+func staticFiles(mux *http.ServeMux, staticFs fs.FS) {
 	staticWeb, err := fs.Sub(staticFs, "static")
 	if err != nil {
 		log.Printf("failed to get fs sub for static: %v", err)
+		return
 	}
-	httpFsStaticWeb := http.FS(staticWeb)
-	r.Use(staticCacheMiddleware())
-	r.StaticFS("/static", httpFsStaticWeb)
-	r.StaticFileFS("/favicon.ico", "./favicon.ico", httpFsStaticWeb)
-	r.StaticFileFS("/favicon-16x16.png", "./favicon-16x16.png", httpFsStaticWeb)
-	r.StaticFileFS("/favicon-32x32.png", "./favicon-32x32.png", httpFsStaticWeb)
-	r.StaticFileFS("/apple-touch-icon.png", "./apple-touch-icon.png", httpFsStaticWeb)
-	r.StaticFileFS("/site.webmanifest", "./site.webmanifest", httpFsStaticWeb)
-
+	mux.Handle("GET /static/", immutableCache(http.StripPrefix("/static/", http.FileServerFS(staticWeb))))
+	for _, name := range []string{
+		"favicon.ico",
+		"favicon-16x16.png",
+		"favicon-32x32.png",
+		"apple-touch-icon.png",
+		"site.webmanifest",
+	} {
+		mux.Handle("GET /"+name, serveFile(staticWeb, name))
+	}
 }
 
-func staticCacheMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		path := c.Request.URL.Path
-		if strings.HasPrefix(path, "/static/js") || strings.HasPrefix(path, "/static/css") {
-			c.Header("Cache-Control", "public, max-age=31536000, immutable")
+func serveFile(fsys fs.FS, name string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFileFS(w, r, fsys, name)
+	})
+}
+
+// immutableCache marks the cache-busted js and css assets as permanently
+// cacheable. It must wrap StripPrefix rather than sit inside it, so that
+// r.URL.Path is still the full request path.
+func immutableCache(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/static/js") || strings.HasPrefix(r.URL.Path, "/static/css") {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		}
-		c.Next()
-	}
+		next.ServeHTTP(w, r)
+	})
 }

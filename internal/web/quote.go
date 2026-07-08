@@ -3,6 +3,7 @@ package web
 import (
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"time"
 
@@ -10,12 +11,11 @@ import (
 	"github.com/bjarke-xyz/stonks/internal/web/views"
 	"github.com/bjarke-xyz/stonks/pkg"
 	"github.com/bjarke-xyz/stonks/pkg/chart"
-	"github.com/gin-gonic/gin"
 )
 
-func (w *web) HandleGetQuote(c *gin.Context) {
-	tickerSymbol := c.Param("symbol")
-	durationInp := c.DefaultQuery("duration", "24h")
+func (h *web) HandleGetQuote(w http.ResponseWriter, r *http.Request) {
+	tickerSymbol := r.PathValue("symbol")
+	durationInp := queryOr(r, "duration", "24h")
 	parsedDuration, err := time.ParseDuration(durationInp)
 	if err != nil {
 		parsedDuration = 24 * time.Hour
@@ -23,48 +23,47 @@ func (w *web) HandleGetQuote(c *gin.Context) {
 	endDate := pkg.EndOfDay(time.Now().UTC())
 	startDate := endDate.Add(-parsedDuration)
 
-	ctx := c.Request.Context()
+	ctx := r.Context()
 
-	quote, err := w.appContext.Deps.QuoteService.GetQuote(ctx, tickerSymbol, startDate, endDate)
+	quote, err := h.appContext.Deps.QuoteService.GetQuote(ctx, tickerSymbol, startDate, endDate)
 	if err != nil {
-		w.handleError(c, err)
+		h.handleError(w, r, err)
 		return
 	}
 
-	currency := c.Query("currency")
+	currency := r.URL.Query().Get("currency")
 	if currency != "" {
-		convertedQuote, err := w.appContext.Deps.CurrencyService.ConvertQuoteCurrency(ctx, quote, currency)
+		convertedQuote, err := h.appContext.Deps.CurrencyService.ConvertQuoteCurrency(ctx, quote, currency)
 		if err != nil {
-			w.handleError(c, fmt.Errorf("error converting currency: %w", err))
+			h.handleError(w, r, fmt.Errorf("error converting currency: %w", err))
 			return
 		}
 		quote = convertedQuote
 	}
 
 	chartSvg := ""
-	includeChart := c.DefaultQuery("chart", "true")
+	includeChart := queryOr(r, "chart", "true")
 	if includeChart != "false" {
 		chartSvg = makeChart(quote)
 	}
 
 	model := views.QuoteViewModel{
-		Base:     w.getBaseModel(c, quote.Symbol.Symbol+" | Quote"),
+		Base:     h.getBaseModel(r, quote.Symbol.Symbol+" | Quote"),
 		Quote:    quote,
 		ChartSvg: template.HTML(chartSvg),
 	}
 
-	format := c.Query("format")
-	if format == "table" {
-		c.HTML(http.StatusOK, "quote_table.html", model)
-		return
+	switch r.URL.Query().Get("format") {
+	case "table":
+		err = views.Render(w, http.StatusOK, "quote_table.html", model)
+	case "xml":
+		err = writeXML(w, http.StatusOK, quote.ToSerializableQuote())
+	default:
+		err = views.Render(w, http.StatusOK, "quote.html", model)
 	}
-	if format == "xml" {
-		serializableQuote := quote.ToSerializableQuote()
-		c.XML(http.StatusOK, serializableQuote)
-		return
+	if err != nil {
+		log.Printf("error rendering quote %q: %v", tickerSymbol, err)
 	}
-
-	c.HTML(http.StatusOK, "quote.html", model)
 }
 
 func makeChart(quote core.Quote) string {

@@ -3,12 +3,12 @@ package views
 import (
 	"bytes"
 	"embed"
+	"fmt"
 	"html/template"
 	"net/http"
 	"time"
 
 	"github.com/bjarke-xyz/stonks/internal/core"
-	"github.com/gin-gonic/gin/render"
 )
 
 //go:embed *.html
@@ -30,30 +30,10 @@ func init() {
 	}
 }
 
-type Flash struct {
-	Type string
-	Msg  string
-}
-
-// FlashesOf turns core's capitalised flash type into a lowercase CSS suffix.
-func FlashesOf(flashType string, msgs []string) []Flash {
-	suffix := map[string]string{
-		core.FlashTypeInfo:  "info",
-		core.FlashTypeWarn:  "warn",
-		core.FlashTypeError: "error",
-	}[flashType]
-	flashes := make([]Flash, len(msgs))
-	for i, msg := range msgs {
-		flashes[i] = Flash{Type: suffix, Msg: msg}
-	}
-	return flashes
-}
-
 type BaseViewModel struct {
 	Path          string
 	UnixBuildTime int64
 	Title         string
-	Flashes       []Flash
 }
 
 type IndexViewModel struct {
@@ -71,33 +51,19 @@ type QuoteViewModel struct {
 	ChartSvg template.HTML
 }
 
-// Renderer implements gin's render.HTMLRender. Handlers keep calling
-// c.HTML(status, "quote.html", model).
-type Renderer struct{}
-
-func (Renderer) Instance(name string, data any) render.Render {
+// Render writes the named page wrapped in layout.html. Output is buffered so a
+// template error neither emits a half-written page nor commits a status code.
+func Render(w http.ResponseWriter, status int, name string, data any) error {
 	tmpl, ok := pages[name]
 	if !ok {
-		panic("views: unknown page " + name)
+		return fmt.Errorf("views: unknown page %q", name)
 	}
-	return pageRender{tmpl: tmpl, data: data}
-}
-
-type pageRender struct {
-	tmpl *template.Template
-	data any
-}
-
-func (p pageRender) Render(w http.ResponseWriter) error {
-	// Buffer so a template error doesn't emit a half-written page.
 	var buf bytes.Buffer
-	if err := p.tmpl.ExecuteTemplate(&buf, "layout.html", p.data); err != nil {
+	if err := tmpl.ExecuteTemplate(&buf, "layout.html", data); err != nil {
 		return err
 	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
 	_, err := buf.WriteTo(w)
 	return err
-}
-
-func (pageRender) WriteContentType(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 }

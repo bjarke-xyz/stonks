@@ -27,8 +27,6 @@ type Config struct {
 	AppEnv    string
 	BuildTime *time.Time
 
-	CookieSecret string
-
 	YFinanceAPIAuthKey string
 }
 
@@ -73,7 +71,6 @@ func NewConfig() (*Config, error) {
 		S3BackupSecretAccessKey: os.Getenv("S3_BACKUP_SECRET_ACCESS_KEY"),
 		JobKey:                  os.Getenv("JOB_KEY"),
 		AppEnv:                  os.Getenv("APP_ENV"),
-		CookieSecret:            os.Getenv("COOKIE_SECRET"),
 		YFinanceAPIAuthKey:      os.Getenv("YFINANCEAPI_AUTH_KEY"),
 		BuildTime:               buildTime,
 	}, nil

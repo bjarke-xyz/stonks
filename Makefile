@@ -3,10 +3,10 @@
 BINARY_NAME=stonks
 
 build:
-	go build -ldflags="-w -s" -o ${BINARY_NAME} cmd/web/main.go
+	go build -ldflags="-w -s" -o ${BINARY_NAME} ./cmd/web
 
 dev:
-	go run cmd/web/main.go
+	go run ./cmd/web
 
 clean:
 	go clean
