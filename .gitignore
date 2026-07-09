@@ -10,3 +10,8 @@ data/*
 
 # binary file
 stonks
+
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

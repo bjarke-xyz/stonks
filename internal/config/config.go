@@ -11,16 +11,8 @@ import (
 )
 
 type Config struct {
-	Port             int
-	DbConnStr        string
-	BackupDbPath     string
-	TursoDatabaseUrl string
-	TursoAuthToken   string
-
-	S3BackupUrl             string
-	S3BackupBucket          string
-	S3BackupAccessKeyId     string
-	S3BackupSecretAccessKey string
+	Port      int
+	DbConnStr string
 
 	JobKey string
 
@@ -35,9 +27,10 @@ const (
 	AppEnvProduction  = "production"
 )
 
+// Deliberately stays on the default rollback journal: sqlite-backer-upper opens
+// the db read-write, which a WAL database cannot do through a read-only mount.
 func (c *Config) ConnectionString() string {
-	// return c.DbConnStr
-	return fmt.Sprintf("%s?authToken=%s", c.TursoDatabaseUrl, c.TursoAuthToken)
+	return fmt.Sprintf("file:%s?_pragma=busy_timeout(5000)", c.DbConnStr)
 }
 
 func NewConfig() (*Config, error) {
@@ -60,18 +53,11 @@ func NewConfig() (*Config, error) {
 		buildTime = &_buildTime
 	}
 	return &Config{
-		Port:                    pkg.MustAtoi(os.Getenv("PORT")),
-		DbConnStr:               os.Getenv("DB_CONN_STR"),
-		BackupDbPath:            os.Getenv("BACKUP_DB_PATH"),
-		TursoDatabaseUrl:        os.Getenv("TURSO_DATABASE_URL"),
-		TursoAuthToken:          os.Getenv("TURSO_AUTH_TOKEN"),
-		S3BackupUrl:             os.Getenv("S3_BACKUP_URL"),
-		S3BackupBucket:          os.Getenv("S3_BACKUP_BUCKET"),
-		S3BackupAccessKeyId:     os.Getenv("S3_BACKUP_ACCESS_KEY_ID"),
-		S3BackupSecretAccessKey: os.Getenv("S3_BACKUP_SECRET_ACCESS_KEY"),
-		JobKey:                  os.Getenv("JOB_KEY"),
-		AppEnv:                  os.Getenv("APP_ENV"),
-		YFinanceAPIAuthKey:      os.Getenv("YFINANCEAPI_AUTH_KEY"),
-		BuildTime:               buildTime,
+		Port:               pkg.MustAtoi(os.Getenv("PORT")),
+		DbConnStr:          os.Getenv("DB_CONN_STR"),
+		JobKey:             os.Getenv("JOB_KEY"),
+		AppEnv:             os.Getenv("APP_ENV"),
+		YFinanceAPIAuthKey: os.Getenv("YFINANCEAPI_AUTH_KEY"),
+		BuildTime:          buildTime,
 	}, nil
 }
