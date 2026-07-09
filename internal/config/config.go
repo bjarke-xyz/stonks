@@ -27,10 +27,13 @@ const (
 	AppEnvProduction  = "production"
 )
 
-// Deliberately stays on the default rollback journal: sqlite-backer-upper opens
-// the db read-write, which a WAL database cannot do through a read-only mount.
+// journal_mode is set explicitly, not left to the default: it is persisted in the
+// db file, so an inherited WAL database stays WAL until told otherwise. It must be
+// a rollback journal because sqlite-backer-upper backs this db up over a read-only
+// bind mount, and a WAL database cannot be opened without write access for its
+// -shm file, even with no writers.
 func (c *Config) ConnectionString() string {
-	return fmt.Sprintf("file:%s?_pragma=busy_timeout(5000)", c.DbConnStr)
+	return fmt.Sprintf("file:%s?_pragma=journal_mode(delete)&_pragma=busy_timeout(5000)", c.DbConnStr)
 }
 
 func NewConfig() (*Config, error) {
