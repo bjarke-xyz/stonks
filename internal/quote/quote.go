@@ -3,7 +3,7 @@ package quote
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -28,7 +28,7 @@ func (q *QuoteService) GetQuote(ctx context.Context, tickerSymbol string, startD
 	quote := core.Quote{}
 	inCache, _ := q.appContext.Deps.Cache.GetObj(cacheKey, &quote)
 	if inCache {
-		log.Printf("got %v quote from cache", tickerSymbol)
+		slog.Debug("quote cache hit", "symbol", tickerSymbol)
 		return quote, nil
 	}
 	repo, err := db.OpenRepo(q.appContext.Config)

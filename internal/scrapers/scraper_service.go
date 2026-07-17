@@ -3,7 +3,7 @@ package scrapers
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/bjarke-xyz/stonks/internal/core"
@@ -20,10 +20,10 @@ func NewScraperService(appContext *core.AppContext) core.ScraperService {
 }
 
 func (s *ScraperService) ScrapeSymbols(ctx context.Context) {
-	log.Printf("scraping symbols...")
+	slog.Info("scraping symbols")
 	err := s.internalScrapeSymbols(ctx)
 	if err != nil {
-		log.Printf("error scraping symbols: %v", err)
+		slog.Error("scraping symbols failed", "error", err)
 	}
 }
 
@@ -38,7 +38,7 @@ func (s *ScraperService) internalScrapeSymbols(ctx context.Context) error {
 		return fmt.Errorf("error getting sources not scraped recently: %w", err)
 	}
 
-	log.Printf("found %v scrape sources that has not been scraped recently", len(scrapeSources))
+	slog.Info("found scrape sources not scraped recently", "count", len(scrapeSources))
 
 	groupedScrapeSources := lo.GroupBy(scrapeSources, func(ss db.SymbolSource) string {
 		return ss.SourceID
@@ -84,12 +84,12 @@ func (s *ScraperService) scrapeAndStoreSymbol(ctx context.Context, repo *db.Repo
 	if err != nil {
 		return fmt.Errorf("error inserting price for symbol %+v: %w", symbol, err)
 	}
-	log.Printf("scraped symbol %v: %v (%v) at %v", symbol.Symbol, scrapeResult.Price, scrapeResult.Currency, scrapeResult.Timestamp)
+	slog.Debug("scraped symbol", "symbol", symbol.Symbol, "price", scrapeResult.Price, "currency", scrapeResult.Currency, "timestamp", scrapeResult.Timestamp)
 
 	err = repo.UpdateLastScraped(ctx, symbol.ID, scraper.SourceIdentifier(), time.Now().UTC())
 	if err != nil {
 		// not important if this fails, just log it, dont return the err
-		log.Printf("failed to update last scraped timestamp for symbol %v, source %v: %v", symbol.ID, scraper.SourceIdentifier(), err)
+		slog.Warn("updating last scraped timestamp failed", "symbol_id", symbol.ID, "source", scraper.SourceIdentifier(), "error", err)
 	}
 	s.appContext.Deps.QuoteService.ClearCache(ctx, symbol.Symbol)
 

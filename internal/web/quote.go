@@ -3,7 +3,7 @@ package web
 import (
 	"fmt"
 	"html/template"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -62,7 +62,7 @@ func (h *web) HandleGetQuote(w http.ResponseWriter, r *http.Request) {
 		err = views.Render(w, http.StatusOK, "quote.html", model)
 	}
 	if err != nil {
-		log.Printf("error rendering quote %q: %v", tickerSymbol, err)
+		slog.Error("rendering quote failed", "symbol", tickerSymbol, "error", err)
 	}
 }
 

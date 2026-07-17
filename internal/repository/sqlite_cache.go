@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -138,7 +138,7 @@ func NewCacheService(cacheRepo *cacheRepo) core.Cache {
 func (c *cacheService) Insert(key string, value string, expirationMinutes int) error {
 	err := c.cacheRepo.Insert(key, value, expirationMinutes)
 	if err != nil {
-		log.Printf("error inserting to cache: %v", err)
+		slog.Error("cache insert failed", "key", key, "error", err)
 	}
 	return err
 }
@@ -155,7 +155,7 @@ func (c *cacheService) InsertObj(key string, value any, expirationMinutes int) e
 func (c *cacheService) Get(key string) (string, error) {
 	value, err := c.cacheRepo.Get(key)
 	if err != nil {
-		log.Printf("error getting from cache: %v", err)
+		slog.Error("cache get failed", "key", key, "error", err)
 	}
 	return value, err
 }
@@ -179,7 +179,7 @@ func (c *cacheService) GetObj(key string, target any) (bool, error) {
 func (c *cacheService) DeleteExpired() error {
 	err := c.cacheRepo.DeleteExpired()
 	if err != nil {
-		log.Printf("error deleting expired: %v", err)
+		slog.Error("cache delete expired failed", "error", err)
 		return err
 	}
 	return nil
@@ -188,7 +188,7 @@ func (c *cacheService) DeleteExpired() error {
 func (c *cacheService) DeleteByPrefix(prefix string) error {
 	err := c.cacheRepo.DeleteByPrefix(prefix)
 	if err != nil {
-		log.Printf("error deleting by prefix %v: %v", prefix, err)
+		slog.Error("cache delete by prefix failed", "prefix", prefix, "error", err)
 		return err
 	}
 	return nil

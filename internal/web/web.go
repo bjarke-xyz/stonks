@@ -4,7 +4,7 @@ import (
 	"embed"
 	"encoding/xml"
 	"io/fs"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -58,12 +58,12 @@ func (h *web) getBaseModel(r *http.Request, title string) views.BaseViewModel {
 }
 
 func (h *web) handleError(w http.ResponseWriter, r *http.Request, err error) {
-	log.Printf("error: %v", err)
+	slog.Error("handler error", "method", r.Method, "path", r.URL.Path, "error", err)
 	if renderErr := views.Render(w, http.StatusInternalServerError, "error.html", views.ErrViewModel{
 		Base:  h.getBaseModel(r, "error"),
 		Error: err,
 	}); renderErr != nil {
-		log.Printf("error rendering error page: %v", renderErr)
+		slog.Error("rendering error page failed", "error", renderErr)
 	}
 }
 
@@ -86,7 +86,7 @@ func writeXML(w http.ResponseWriter, status int, data any) error {
 func staticFiles(mux *http.ServeMux, staticFs fs.FS) {
 	staticWeb, err := fs.Sub(staticFs, "static")
 	if err != nil {
-		log.Printf("failed to get fs sub for static: %v", err)
+		slog.Error("static fs sub failed", "error", err)
 		return
 	}
 	mux.Handle("GET /static/", immutableCache(http.StripPrefix("/static/", http.FileServerFS(staticWeb))))

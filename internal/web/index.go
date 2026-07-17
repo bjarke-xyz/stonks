@@ -1,7 +1,7 @@
 package web
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/bjarke-xyz/stonks/internal/web/views"
@@ -12,6 +12,6 @@ func (h *web) HandleGetIndex(w http.ResponseWriter, r *http.Request) {
 		Base: h.getBaseModel(r, "stonks"),
 	})
 	if err != nil {
-		log.Printf("error rendering index: %v", err)
+		slog.Error("rendering index failed", "error", err)
 	}
 }
