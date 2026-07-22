@@ -28,7 +28,12 @@ const (
 )
 
 func (c *Config) ConnectionString() string {
-	return fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", c.DbConnStr)
+	// _time_format=sqlite makes the driver write time.Time as
+	// "2006-01-02 15:04:05.999999999-07:00". Without it the driver defaults to
+	// time.Time.String(), which for an unnamed fixed zone renders the offset in
+	// the zone-name slot ("... +0200 +0200") — a value neither the driver nor
+	// SQLite's date functions can parse back.
+	return fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_time_format=sqlite", c.DbConnStr)
 }
 
 func NewConfig() (*Config, error) {
