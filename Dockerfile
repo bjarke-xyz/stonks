@@ -1,7 +1,11 @@
 # Use the offical golang image to create a binary.
 # This is based on Debian and sets the GOPATH to /go.
 # https://hub.docker.com/_/golang
-FROM golang:1.26-bookworm AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS builder
+
+ARG TARGETOS
+ARG TARGETARCH
+RUN apk add --no-cache make
 
 # Create and change to the app directory.
 WORKDIR /app
@@ -18,7 +22,7 @@ COPY . ./
 # modernc.org/sqlite is pure Go, so CGO can stay off — which lets the runtime
 # image be a near-empty base with no libc. Views, static assets and migrations
 # are all go:embed'ed, so the binary is the whole app.
-RUN CGO_ENABLED=0 make build
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH make build
 
 # Distroless static: ~2MB, ships ca-certificates and tzdata, and nothing else —
 # no shell, no package manager. Suits a static CGO-free binary.
